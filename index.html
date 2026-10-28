@@ -1,0 +1,589 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PLC 작화 에이전트 · 도면 분석 및 패널 작성</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+
+  <style>
+    :root {
+      --ink: #1d2233;
+      --ink-soft: #5a6280;
+      --line: #e8eaf3;
+      --brand: #5b5bf6;
+      --brand-soft: #eeeeff;
+      --mint: #12b8a0;
+      --mint-soft: #e2f8f4;
+      --sun: #ff9550;
+      --sun-soft: #fff0e6;
+      --card: #ffffff;
+      --bg: #f6f7fc;
+      --shadow: 0 1px 2px rgba(29,34,51,.04),
+        0 12px 32px -12px rgba(29,34,51,.18);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Pretendard Variable", Pretendard,
+        -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 560px;
+      z-index: -1;
+      background:
+        radial-gradient(900px 440px at 12% -10%,
+          #dcdcff 0%, transparent 60%),
+        radial-gradient(760px 400px at 88% -20%,
+          #d6f5ee 0%, transparent 60%);
+    }
+
+    .wrap {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* 헤더 */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(14px);
+      background: rgba(255,255,255,.85);
+      border-bottom: 1px solid rgba(232,234,243,.9);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-height: 68px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -.02em;
+    }
+
+    .mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      font-size: 19px;
+      background: linear-gradient(140deg, var(--brand), #8b7bff);
+      box-shadow: 0 6px 14px -6px var(--brand);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 6px;
+      margin-left: 18px;
+    }
+
+    .nav-links a {
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      text-decoration: none;
+    }
+
+    .nav-links a:hover {
+      background: var(--brand-soft);
+      color: var(--brand);
+    }
+
+    .nav-right {
+      margin-left: auto;
+    }
+
+    .btn {
+      border: 0;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 700;
+      border-radius: 12px;
+      padding: 11px 17px;
+      font-size: 14px;
+      background: var(--brand);
+      color: #fff;
+      box-shadow: 0 8px 18px -10px var(--brand);
+      transition: transform .12s;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    /* 메인 소개 */
+    .hero {
+      padding: 56px 0 30px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 700;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--brand);
+      padding: 7px 13px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+    }
+
+    h1 {
+      font-size: clamp(30px, 4.6vw, 48px);
+      line-height: 1.25;
+      letter-spacing: -.035em;
+      margin: 20px 0 14px;
+      font-weight: 800;
+    }
+
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(180deg, transparent 62%, #ffe08a 62%);
+    }
+
+    .lede {
+      color: var(--ink-soft);
+      font-size: 16px;
+      max-width: 660px;
+      margin: 0 auto;
+      word-break: keep-all;
+    }
+
+    /* AI 채팅 패널 */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .chat {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: min(720px, calc(100vh - 190px));
+      min-height: 560px;
+      margin-bottom: 56px;
+      scroll-margin-top: 90px;
+    }
+
+    .chat-top {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.9);
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      font-size: 21px;
+      background: linear-gradient(140deg, var(--mint), #5ad9c4);
+    }
+
+    .chat-top b {
+      display: block;
+      font-size: 15px;
+    }
+
+    .chat-top small {
+      color: var(--mint);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--mint);
+      display: inline-block;
+      margin-right: 5px;
+    }
+
+    #chat-frame {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      border: 0;
+      background: #fff;
+    }
+
+    .chat-placeholder {
+      padding: 24px;
+      color: var(--ink-soft);
+      text-align: center;
+    }
+
+    .chat-placeholder h3 {
+      color: var(--ink);
+    }
+
+    /* 안내 카드 */
+    .section-heading {
+      margin-bottom: 18px;
+    }
+
+    .section-heading h2 {
+      margin: 0 0 6px;
+      font-size: 25px;
+      letter-spacing: -.03em;
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
+
+    .info {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      padding-bottom: 56px;
+      scroll-margin-top: 90px;
+    }
+
+    .info .card { padding: 22px; }
+
+    .ico {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      font-size: 19px;
+    }
+
+    .ico.b { background: var(--brand-soft); }
+    .ico.m { background: var(--mint-soft); }
+    .ico.s { background: var(--sun-soft); }
+
+    .info h3 {
+      margin: 14px 0 7px;
+      font-size: 16px;
+    }
+
+    .info p {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--ink-soft);
+      word-break: keep-all;
+    }
+
+    /* 작업 절차 */
+    .workflow {
+      margin-bottom: 56px;
+      padding: 25px;
+    }
+
+    .workflow h2 {
+      margin: 0 0 18px;
+      font-size: 22px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .step {
+      padding: 15px;
+      border-radius: 14px;
+      background: #f8f9ff;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .step p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      background: #fff;
+      padding: 28px 0;
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .foot {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    @media (max-width: 900px) {
+      .info, .steps { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .chat { height: 680px; }
+    }
+
+    @media (max-width: 560px) {
+      .wrap { padding: 0 16px; }
+      .hero { padding-top: 38px; }
+      .chat { height: 70vh; min-height: 500px; }
+      .workflow { padding: 18px; }
+      .section-heading h2 { font-size: 22px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 헤더 -->
+  <header>
+    <div class="wrap nav">
+      <div class="logo">
+        <span class="mark">⚙️</span>
+        PLC 작화 에이전트
+      </div>
+
+      <nav class="nav-links">
+        <a href="#chat">AI 작화 작업</a>
+        <a href="#info">주요 기능</a>
+        <a href="#workflow">작업 절차</a>
+      </nav>
+
+      <div class="nav-right">
+        <button class="btn"
+          onclick="document.getElementById('chat').scrollIntoView({behavior:'smooth'})">
+          작업 시작
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 소개 -->
+  <section class="wrap hero">
+    <span class="badge">
+      ⚡ PLC 도면 분석 · 글로벌 라벨 · 패널 초안
+    </span>
+
+    <h1>
+      도면을 전달하면,<br>
+      <em>PLC 작화 작업을</em> 도와드려요
+    </h1>
+
+    <p class="lede">
+      도면과 요구사항을 AI 에이전트에게 전달하세요.
+      도면의 구성과 신호를 분석하고, 글로벌 라벨과 PLC 패널 초안을
+      작성할 수 있도록 단계별로 지원합니다.
+    </p>
+  </section>
+
+  <!-- AI 에이전트 -->
+  <div class="wrap">
+    <section class="card chat" id="chat">
+      <div class="chat-top">
+        <span class="avatar">🤖</span>
+        <div>
+          <b>PLC 작화 AI 에이전트</b>
+          <small>
+            <span class="dot"></span>
+            도면 분석 및 작화 지원
+          </small>
+        </div>
+      </div>
+
+      <!-- 실제 에이전트 연결 코드를 아래에 삽입하세요. -->
+      <iframe
+        id="chat-frame"
+        title="PLC 작화 AI 에이전트 채팅"
+        allow="clipboard-write">
+      </iframe>
+    </section>
+  </div>
+
+  <!-- 주요 기능 -->
+  <section class="wrap" id="info">
+    <div class="section-heading">
+      <h2>주요 작업 기능</h2>
+      <p>도면 분석부터 작화 초안 작성까지 작업 흐름을 지원합니다.</p>
+    </div>
+
+    <div class="info">
+      <div class="card">
+        <span class="ico b">📐</span>
+        <h3>도면 분석</h3>
+        <p>
+          전달받은 도면과 요구사항을 확인하고,
+          입출력 신호와 장치 구성, 작화에 필요한 정보를 정리합니다.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="ico m">🏷️</span>
+        <h3>글로벌 라벨 작성</h3>
+        <p>
+          확인된 신호 정보를 바탕으로 변수명, 데이터 형식,
+          설명 및 입출력 주소를 정리한 글로벌 라벨 초안을 작성합니다.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="ico s">🧩</span>
+        <h3>PLC 패널 초안 작성</h3>
+        <p>
+          요구사항에 맞춰 PLC 패널의 구성과 작화 요소를 정리하고,
+          검토할 수 있는 패널 초안 및 수정 사항을 제안합니다.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 작업 절차 -->
+  <section class="wrap" id="workflow">
+    <div class="card workflow">
+      <h2>작업 진행 절차</h2>
+
+      <div class="steps">
+        <div class="step">
+          <strong>01. 도면 및 요구사항 전달</strong>
+          <p>
+            도면 파일과 PLC 기종, 작화 프로그램,
+            주소 지정 규칙 및 필요한 결과물을 전달합니다.
+          </p>
+        </div>
+
+        <div class="step">
+          <strong>02. 분석 및 초안 작성</strong>
+          <p>
+            에이전트가 제공된 정보를 바탕으로 신호 목록,
+            글로벌 라벨과 PLC 패널 초안을 작성하도록 요청합니다.
+          </p>
+        </div>
+
+        <div class="step">
+          <strong>03. 결과 검토 및 수정</strong>
+          <p>
+            누락된 신호와 중복 주소, 명명 규칙 및 장치 호환성을
+            검토한 후 담당자가 최종 결과를 확인합니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap foot">
+      <div class="logo">
+        <span class="mark">⚙️</span>
+        PLC 작화 에이전트
+      </div>
+
+      <span>도면 분석 · 글로벌 라벨 · PLC 패널 초안 작성 지원</span>
+
+      <span style="margin-left:auto">
+        © 2026 PLC 작화 에이전트
+      </span>
+    </div>
+  </footer>
+
+  <script>
+    /*
+      채팅 에이전트 연결 방법
+
+      아래 CHAT_EMBED_HTML에 실제 에이전트의 임베드 코드를
+      넣어야 채팅 기능이 연결됩니다.
+
+      임베드 코드가 iframe 형태라면 공급자가 제공한 iframe
+      주소와 설정을 그대로 사용하는 것을 권장합니다.
+    */
+
+    const CHAT_EMBED_HTML = "";
+
+    const chatFrame = document.getElementById("chat-frame");
+
+    if (CHAT_EMBED_HTML.trim()) {
+      chatFrame.srcdoc = CHAT_EMBED_HTML;
+    } else {
+      chatFrame.srcdoc = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport"
+                content="width=device-width, initial-scale=1">
+          <style>
+            body {
+              margin: 0;
+              padding: 28px 20px;
+              font-family: sans-serif;
+              color: #5a6280;
+              background: #fff;
+              text-align: center;
+              line-height: 1.7;
+            }
+            .icon { font-size: 38px; }
+            h3 { color: #1d2233; }
+            .hint {
+              display: inline-block;
+              margin-top: 10px;
+              padding: 12px 16px;
+              border-radius: 12px;
+              background: #eeeeff;
+              color: #5b5bf6;
+              font-size: 13px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="icon">⚙️</div>
+          <h3>PLC 작화 에이전트 연결 대기</h3>
+          <p>
+            실제 에이전트의 임베드 코드를 연결하면<br>
+            이 영역에서 채팅을 사용할 수 있습니다.
+          </p>
+          <div class="hint">
+            도면 분석 · 글로벌 라벨 · PLC 패널 초안 작성
+          </div>
+        </body>
+        </html>
+      `;
+    }
+  </script>
+
+</body>
+</html>
