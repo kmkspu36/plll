@@ -3,23 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light">
   <meta name="description" content="기존 Copilot Studio 통합운영 에이전트와 함께하는 PLC 엔지니어링 작업 공간">
   <title>PanelLab — PLC Engineering AI Workspace</title>
   <link rel="stylesheet" href="css/panellab.css">
 </head>
 <body>
   <a class="skip" href="#workspace">작업 공간으로 건너뛰기</a>
-  <div id="app" class="app" data-view="chat" data-results="closed" data-connection="loading">
+  <div id="app" class="app" data-view="chat" data-page="dashboard" data-results="closed" data-connection="loading">
     <aside class="nav" aria-label="주 메뉴">
       <a class="brand" href="./" aria-label="PanelLab 홈"><span class="logo">PL</span><span>PanelLab<small>ENGINEERING WORKSPACE</small></span></a>
       <button id="newConversation" class="btn primary new-chat" type="button"><span aria-hidden="true">+</span> 새 대화</button>
       <div class="nav-section">WORKSPACE</div>
-      <nav>
-        <button data-nav="home" aria-current="page" type="button">AI 작업실</button>
-        <button data-nav="project" type="button">프로젝트</button>
-        <button data-nav="saved" type="button">저장된 결과</button>
-        <button id="savedImages" type="button">보관한 이미지</button>
+      <nav class="workspace-nav">
+        <button data-nav="dashboard" aria-current="page" type="button"><span class="nav-icon" aria-hidden="true">▦</span>대시보드</button>
+        <button data-nav="home" type="button"><span class="nav-icon" aria-hidden="true">◈</span>AI 작업실</button>
+        <button data-task="analyze" type="button"><span class="nav-icon" aria-hidden="true">▤</span>PLC 도면 분석</button>
+        <button data-task="draw" type="button"><span class="nav-icon" aria-hidden="true">⌘</span>PLC 작화 작성</button>
+        <button data-task="code" type="button"><span class="nav-icon" aria-hidden="true">〈〉</span>PLC 코드 생성</button>
+        <button data-task="check" type="button"><span class="nav-icon" aria-hidden="true">◎</span>오류 검사</button>
+        <button data-task="fix" type="button"><span class="nav-icon" aria-hidden="true">⚒</span>오류 자동 수정</button>
+        <button data-task="verify" type="button"><span class="nav-icon" aria-hidden="true">◇</span>PLC 검증</button>
+        <button data-task="report" type="button"><span class="nav-icon" aria-hidden="true">▧</span>보고서</button>
+        <button data-nav="project" type="button"><span class="nav-icon" aria-hidden="true">□</span>프로젝트 관리</button>
+        <button data-nav="history" type="button"><span class="nav-icon" aria-hidden="true">◷</span>작업 이력</button>
+        <button data-nav="saved" type="button"><span class="nav-icon" aria-hidden="true">▥</span>저장된 결과</button>
+        <button id="savedImages" type="button"><span class="nav-icon" aria-hidden="true">▣</span>보관한 이미지</button>
       </nav>
       <div class="proj">
         <label for="projectSelect" class="small">현재 프로젝트</label>
@@ -31,6 +40,7 @@
       <div class="nav-section">최근 대화 <span class="small">로컬 기록</span></div>
       <div id="recentConversations" class="recent" aria-label="최근 대화"></div>
       <div class="nav-bottom">
+        <div class="agent-card"><div><span id="agentDot" class="agent-dot"></span><strong>AGENT 01</strong><span>연결 상태</span></div><p id="agentConnection">연결 확인 중</p><small>PLC 통합 운영 에이전트<br>내부 에이전트 구성은 변경하지 않습니다.</small></div>
         <button data-nav="settings" class="btn" type="button">설정 및 연결 안내</button>
         <p>기존 통합운영 에이전트 1개<br>CPU·명령어 호환성 별도 확인</p>
       </div>
@@ -38,13 +48,30 @@
 
     <main id="workspace" class="chat" tabindex="-1">
       <header class="chat-head">
-        <div><div class="eyebrow">PLC ENGINEERING AI</div><h1>AI 작업실</h1></div>
+        <div><div class="eyebrow">AI와 함께하는 스마트한 PLC 엔지니어링</div><h1 id="pageTitle">PanelLab · 대시보드</h1><p id="headerProject" class="header-project"></p></div>
         <div class="header-actions">
+          <button id="headerHelp" class="btn sm" type="button" aria-label="연결 및 저장 안내">안내</button>
+          <span class="local-user">로컬 작업 공간</span>
           <div class="connection-chip offline" role="status"><span class="status-dot"></span><span id="connectionLabel">연결 준비</span></div>
           <button id="toggleResults" class="btn sm" type="button" aria-expanded="false" aria-controls="resultsPanel">결과 열기</button>
         </div>
       </header>
       <div id="notice" class="notice" role="alert" hidden><span id="noticeText"></span><button id="dismissNotice" type="button" class="btn sm" aria-label="알림 닫기">닫기</button></div>
+      <section id="dashboard" class="dashboard" aria-label="프로젝트 대시보드">
+        <div class="dashboard-hero">
+          <div><span class="hero-tag">PLC ENGINEERING WORKSPACE</span><h2>더 스마트한 PLC 개발의 시작<br>PanelLab과 함께하세요.</h2><p>도면 분석부터 코드 생성까지, 기존 통합운영 에이전트 하나로.</p><button id="dashboardChat" class="btn primary" type="button">AI 작업실 열기 <span aria-hidden="true">→</span></button></div>
+          <div class="hero-circuit" aria-hidden="true"><div class="circuit-module"><span>INPUT</span><i></i><i></i><i></i></div><div class="circuit-wire"></div><div class="hero-chip">AI<small>AGENT 01</small></div><div class="circuit-wire"></div><div class="circuit-module"><span>OUTPUT</span><i></i><i></i><i></i></div></div>
+        </div>
+        <div class="dashboard-heading"><div><h2>엔지니어링 대시보드</h2><p>이 브라우저에 저장된 실제 프로젝트와 작업 기록입니다.</p></div><button id="dashboardProject" class="btn" type="button">프로젝트 관리</button></div>
+        <div id="dashboardMetrics" class="dashboard-metrics"></div>
+        <div class="dashboard-grid">
+          <section class="workspace-card"><header><h3>최근 프로젝트</h3><span>로컬 저장</span></header><div id="dashboardProjects" class="dashboard-list"></div></section>
+          <section class="workspace-card workflow-card"><header><h3>현재 프로젝트 작업 흐름</h3><span>응답 근거 기반</span></header><p class="section-hint">요청 기록과 사용자가 연결한 실제 결과만 표시합니다. AI 완료율은 추정하지 않습니다.</p><ol id="dashboardWorkflow" class="workflow-list"></ol></section>
+          <section class="workspace-card"><header><h3>빠른 시작</h3><span>AGENT 01</span></header><div class="dashboard-shortcuts"><button id="dashboardNew" type="button"><span aria-hidden="true">＋</span>새 프로젝트</button><button id="dashboardAttach" type="button"><span aria-hidden="true">↑</span>이미지 준비</button><button data-task="analyze" type="button"><span aria-hidden="true">▤</span>도면 분석 요청</button><button data-task="code" type="button"><span aria-hidden="true">〈〉</span>코드 생성 요청</button></div><p class="section-hint">이미지: PNG·JPEG 로컬 준비 가능. PDF 및 실제 서버 분석은 지원 검증이 필요합니다.</p></section>
+          <section class="workspace-card"><header><h3>최근 작업 이력</h3><button id="dashboardHistory" class="text-btn" type="button">전체 보기 →</button></header><div id="dashboardHistoryList" class="dashboard-list"></div></section>
+        </div>
+        <p class="dashboard-footnote">CPU 모델 미정 · AI 분석은 GX Works 컴파일·실장비 검증을 대체하지 않습니다. 클라우드 동기화와 계정 로그인은 별도 구성 사항입니다.</p>
+      </section>
       <div id="status" class="status" role="status" aria-live="polite">
         <span id="statusText">채팅에 연결하는 중입니다...</span>
         <button id="retryConnect" class="btn sm" type="button" hidden>새 대화로 재연결</button>
@@ -85,11 +112,13 @@
         <div class="row"><button id="clearResults" class="btn sm" type="button">결과 비우기</button><button id="closeResults" class="btn sm" type="button" aria-label="결과 닫기">닫기</button></div>
       </div>
       <label class="result-search"><input id="resultSearch" type="search" placeholder="결과 검색" aria-label="PLC 작업 결과 검색"><button id="clearSearch" type="button" aria-label="검색어 지우기" hidden>×</button></label>
+      <label class="result-task-filter"><span>작업 단계</span><select id="resultTaskFilter"><option value="">전체 단계</option><option value="analyze">도면 분석</option><option value="draw">PLC 작화</option><option value="code">코드 생성</option><option value="check">오류 검사</option><option value="fix">오류 수정</option><option value="verify">PLC 검증</option><option value="report">보고서</option></select></label>
       <div id="resultTabs" class="tabs" role="tablist" aria-label="결과 종류"></div>
       <div id="resultBody" class="rbody"></div>
       <p class="result-disclaimer">에이전트 응답 기반 표시 · PLC 컴파일 및 실장비 검증을 대체하지 않습니다.</p>
     </section>
     <nav class="mobile-tabs" aria-label="화면 전환">
+      <button id="mobileDashboard" class="mtab" type="button">홈</button>
       <button class="mtab" data-view="chat" type="button">채팅</button>
       <button class="mtab" data-view="results" type="button">결과</button>
       <button class="mtab" data-view="menu" type="button">메뉴</button>
@@ -127,6 +156,7 @@
   <script src="js/attachments.js"></script>
   <script src="js/store.js"></script>
   <script src="js/connection.js"></script>
+  <script src="js/workspace.js"></script>
   <script src="js/panel.js"></script>
 </body>
 </html>

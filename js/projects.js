@@ -18,6 +18,13 @@
     catch (e) { notify("브라우저 저장에 실패했습니다. 데이터는 현재 화면에만 있습니다. 파일로 저장해 주세요."); return false; }
   }
   function uid() { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  var statusLabels = { unclassified: "미분류", active: "진행 중", complete: "완료", paused: "보류" };
+  var taskLabels = { analyze: "도면 분석", draw: "PLC 작화", code: "코드 생성", check: "오류 검사", fix: "오류 수정", verify: "PLC 검증", report: "보고서" };
+  function hasLabel(labels, value) { return Object.prototype.hasOwnProperty.call(labels, value); }
+  function touch(id) {
+    var project = projects.find(function (p) { return p.id === id; });
+    if (project) { project.updatedAt = new Date().toISOString(); save(PKEY, projects); }
+  }
 
   var projects = load(PKEY, []);
   var results = load(RKEY, []);
@@ -43,7 +50,8 @@
     var proj = {
       id: uid(), name: (p.name || "").trim() || "새 프로젝트", vendor: (p.vendor || "").trim(),
       software: p.software === "GX Works2" ? "GX Works2" : "GX Works3", cpu: (p.cpu || "").trim(),
-      createdAt: new Date().toISOString()
+      description: (p.description || "").trim(), status: hasLabel(statusLabels, p.status) ? p.status : "unclassified",
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     };
     projects.push(proj); save(PKEY, projects); activeId = proj.id; save(AKEY, activeId); emit();
     return proj;
@@ -51,7 +59,9 @@
   function updateProject(id, p) {
     var proj = projects.filter(function (x) { return x.id === id; })[0];
     if (!proj) return;
-    ["name", "vendor", "software", "cpu"].forEach(function (k) { if (typeof p[k] === "string") proj[k] = p[k].trim(); });
+    ["name", "vendor", "software", "cpu", "description"].forEach(function (k) { if (typeof p[k] === "string") proj[k] = p[k].trim(); });
+    if (hasLabel(statusLabels, p.status)) proj.status = p.status;
+    proj.updatedAt = new Date().toISOString();
     if (!proj.name) proj.name = "이름 없는 프로젝트";
     save(PKEY, projects); emit();
   }
@@ -72,6 +82,7 @@
     };
     results.push(rec);
     save(RKEY, results);
+    touch(rec.projectId);
     emit();
     root.dispatchEvent(new CustomEvent("panellab:result", { detail: rec }));
     return rec;
@@ -80,15 +91,37 @@
     return results.filter(function (r) { return r.projectId === projectId; });
   }
   function addHistory(entry, context) {
-    history.push({ time: new Date().toISOString(), projectId: context ? context.projectId : activeId, kind: entry.kind, text: entry.text });
+    var projectId = context ? context.projectId : activeId;
+    history.push({ time: new Date().toISOString(), projectId: projectId, kind: entry.kind, text: entry.text });
+    touch(projectId);
     emit();
   }
   function historyFor(projectId) {
     var fromResults = resultsFor(projectId).map(function (r) {
       return { time: r.receivedAt, kind: "result", text: r.title + " (" + r.type + ")" };
     });
-    return history.filter(function (h) { return h.projectId === projectId; }).concat(fromResults)
+    var conversations = root.PanelLab.conversations;
+    var requests = conversations ? conversations.forProject(projectId).reduce(function (all, conversation) {
+      return all.concat(conversation.activities.filter(function (entry) { return entry.direction === "outgoing"; }).map(function (entry) {
+        return { time: entry.time, kind: "user", text: (entry.activity.text || "이미지 첨부 요청").slice(0, 200) };
+      }));
+    }, []) : history.filter(function (h) { return h.projectId === projectId; });
+    return requests.concat(fromResults)
       .sort(function (a, b) { return a.time < b.time ? -1 : 1; });
+  }
+  function recordTask(task, context) {
+    if (!hasLabel(taskLabels, task) || !context) throw new Error("작업 종류와 대화 정보가 필요합니다.");
+    var project = projects.find(function (p) { return p.id === context.projectId; });
+    if (!project) throw new Error("작업 프로젝트를 찾지 못했습니다.");
+    if (!Array.isArray(project.requests)) project.requests = [];
+    project.requests.push({ id: uid(), task: task, conversationId: context.id, requestedAt: new Date().toISOString() });
+    touch(project.id); emit();
+  }
+  function assignTask(key, task) {
+    var rec = results.find(function (r) { return r.key === key; });
+    if (!rec || !hasLabel(taskLabels, task)) throw new Error("결과와 작업 종류를 확인해 주세요.");
+    rec.task = task; rec.classifiedBy = "user"; rec.classifiedAt = new Date().toISOString();
+    save(RKEY, results); touch(rec.projectId); emit();
   }
   function clearResults(projectId) {
     results = results.filter(function (r) { return r.projectId !== projectId; });
@@ -113,6 +146,7 @@
     projects: function () { return projects.slice(); }, active: active, setActive: setActive,
     addProject: addProject, updateProject: updateProject, addResult: addResult,
     resultsFor: resultsFor, addHistory: addHistory, historyFor: historyFor,
-    clearResults: clearResults, onChange: onChange, approve: approve
+    clearResults: clearResults, onChange: onChange, approve: approve,
+    statusLabels: statusLabels, taskLabels: taskLabels, recordTask: recordTask, assignTask: assignTask
   };
 })(window);

@@ -3,6 +3,45 @@
 Korean PLC engineering workspace using the existing Copilot Studio integrated agent.
 No replacement AI, automatic PLC deployment, or local PLC correctness engine is provided.
 
+## Engineering dashboard
+
+The navy sidebar, white workspace and blue controls follow the supplied design
+reference without copying its example data, user portrait, invented progress
+percentages or completed PLC results. The circuit motif is CSS, not an external
+stock image. Dashboard statistics use actual locally stored projects/results.
+Project status is explicitly user-assigned; old projects without a status remain
+unclassified. A project marked complete is not a successful AI or PLC verification.
+
+Navigation offers drawing analysis, ladder, code generation, error review,
+correction, verification and reporting as ordinary requests to **AGENT 01 only**.
+The owner's internal AGENT 02–08 connections are neither configured nor changed
+by this website. The existing Direct Line/Broker/authentication code is unchanged.
+No additional API or paid library is introduced.
+
+Project descriptions, user status, creation/last-activity dates and stage request
+records are additive to existing storage. Work history is rebuilt from preserved
+outgoing activities and results, so it remains visible after reload. The dashboard
+shows requested tasks as requests, not completed operations. Users may explicitly
+link a real result or retained original response to a stage; this is labelled user
+classification and requires review. Verification/report tabs display those actual
+linked responses without manufacturing a new response schema. No automatic stage
+completion, job progress percentage, GX Works compilation or equipment test is
+claimed. Reports need the existing agent's actual responses and context.
+
+The dashboard and workspace switch without unmounting Web Chat. Results remain
+conditional; mobile has separate Home, Chat, Results and Menu controls. The native
+Web Chat composer/transcript and image-preparation gate are retained. User/account
+identity is not fabricated: the header identifies a local workspace, not a signed-in
+person. PDF upload, server conversation resume, automatic stage correlation and
+cloud synchronization still require verified service support.
+
+| Storage | Current use | Limits |
+|---|---|---|
+| localStorage | Projects, conversation Activities, results and task references | Small browser quota; no cross-device sync or encryption |
+| IndexedDB | Explicit original-image storage and legacy backups | Browser eviction possible; per-browser access |
+| File export | Project JSON and individual original images | Manual backup; JSON does not contain image bytes; import is not implemented |
+| Cloud storage | Not configured | Needs authentication, deployment, access policy and cost review |
+
 ## Deployment and authentication
 
 The repository's currently observed deployment is **GitHub Pages**. Pages can
@@ -194,6 +233,12 @@ sticky scrolling followed the bottom and retained an older reading position.
 Welcome transitions, 360–1440px layouts and simulated visual-viewport resizing
 were checked without contacting an agent or creating AI responses. These are
 renderer checks, not successful live conversations or physical keyboard tests.
+
+The renewed dashboard was checked in isolated headless Chrome at widths 1440,
+1024, 819, 720, 390 and 360px, including a 390x400 short viewport. Dashboard/chat/
+results switching, attachment-dialog bounds and the offline send gate were checked.
+Project creation, description/user status, real metric updates and reload
+persistence were verified in a temporary browser profile, not the user's storage.
 
 The publicly reachable existing Broker returned HTTP 405 for GET, HTTP 204 for
 OPTIONS, and HTTP 400 with an error object for an empty POST during diagnosis.

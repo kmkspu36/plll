@@ -153,3 +153,48 @@ test("attachment-only post is archived as a user message without requiring text"
   dispatch({ type: "DIRECT_LINE/POST_ACTIVITY", payload: { activity: { type: "event", name: "startConversation" } } });
   assert.equal(c.activities.length, 1);
 });
+test("project metadata is additive and status is explicitly user supplied", () => {
+  const f = setup(), d = f.P.data, original = d.active();
+  assert.equal(original.status, undefined);
+  const project = d.addProject({ name: "Motor", description: "Confirmed interlock scope", status: "active", software: "GX Works2" });
+  assert.equal(project.cpu, "");
+  assert.equal(project.status, "active");
+  assert.equal(project.description, "Confirmed interlock scope");
+  d.updateProject(project.id, { status: "toString", description: "Updated" });
+  assert.equal(project.status, "active");
+  assert.equal(project.description, "Updated");
+  const restored = setup(Object.fromEntries(f.storage)).P.data;
+  assert.equal(restored.projects().find((p) => p.id === original.id).name, original.name);
+  assert.equal(restored.projects().find((p) => p.id === project.id).description, "Updated");
+});
+test("task requests and user classifications never manufacture completion or other project results", () => {
+  const f = setup(), d = f.P.data, c = f.P.conversations.create(d.active().id);
+  d.recordTask("verify", c);
+  assert.equal(d.active().requests[0].task, "verify");
+  assert.equal(d.active().requests[0].conversationId, c.id);
+  assert.equal(d.active().requests[0].state, undefined);
+  assert.equal(d.active().status, undefined);
+  assert.equal(d.resultsFor(c.projectId).length, 0);
+  const result = d.addResult("real-raw", 0, { type: "raw_response", data: { text: "Unconfirmed observations" } }, c, { text: "Unconfirmed observations" });
+  d.assignTask(result.key, "verify");
+  assert.equal(result.task, "verify");
+  assert.equal(result.classifiedBy, "user");
+  assert.equal(result.type, "raw_response");
+  assert.equal(result.approval, "proposed");
+  assert.throws(() => d.recordTask("toString", c), /작업 종류/);
+  assert.throws(() => d.assignTask(result.key, "unsupported"), /작업 종류/);
+  d.addProject({ name: "Separate" });
+  assert.equal(d.resultsFor(d.active().id).length, 0);
+  const restored = setup(Object.fromEntries(f.storage)).P.data;
+  assert.equal(restored.resultsFor(c.projectId)[0].task, "verify");
+  assert.equal(restored.projects().find((p) => p.id === c.projectId).requests.length, 1);
+});
+test("work history derives from preserved conversations after reload", () => {
+  const f = setup(), d = f.P.data, c = f.P.conversations.create(d.active().id);
+  f.P.conversations.record(c, { type: "message", text: "Request preserved across sessions", id: "request" }, "outgoing");
+  d.addHistory({ kind: "user", text: "Request preserved across sessions" }, c);
+  assert.equal(d.historyFor(c.projectId).length, 1);
+  const restored = setup(Object.fromEntries(f.storage));
+  assert.equal(restored.P.data.historyFor(c.projectId)[0].text, "Request preserved across sessions");
+  assert.equal(restored.P.data.historyFor(c.projectId).length, 1);
+});
