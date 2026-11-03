@@ -1,0 +1,117 @@
+"use strict";
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const path = require("node:path");
+
+function setup(fetchResponse) {
+  const elements = new Map(), lines = [], requests = [], dispatched = [];
+  function element(id) {
+    if (!elements.has(id)) elements.set(id, {
+      hidden: false, disabled: false, textContent: "", classList: { toggle() {} },
+      addEventListener(name, callback) { this[name] = callback; }
+    });
+    return elements.get(id);
+  }
+  let contextId = 0;
+  const root = {
+    dispatchEvent() {},
+    PanelLab: {
+      data: { active: () => ({ id: "project" }) },
+      conversations: {
+        active: () => null,
+        create: () => ({ id: String(++contextId), projectId: "project" })
+      },
+      createStore: () => ({ dispatch: (action) => dispatched.push(action) })
+    },
+    WebChat: {
+      createStore() {},
+      renderWebChat(options) { assert.equal(options.styleOptions.hideUploadButton, true); },
+      createDirectLine() {
+        let callback;
+        const line = {
+          ended: false, unsubscribed: false, greetings: 0,
+          end() { this.ended = true; },
+          postActivity() { this.greetings++; return { subscribe() {} }; },
+          connectionStatus$: { subscribe(cb) { callback = cb; cb(1); return { unsubscribe() { line.unsubscribed = true; } }; } },
+          emit(state) { callback(state); }
+        };
+        lines.push(line); return line;
+      }
+    }
+  };
+  const sandbox = {
+    window: root, document: { getElementById: element, querySelector: element },
+    AbortController, CustomEvent: class { constructor(type) { this.type = type; } }, setTimeout, clearTimeout,
+    fetch: async (url, options) => {
+      requests.push({ url, options });
+      return fetchResponse ? fetchResponse(url, options) : { ok: true, json: async () => ({ token: "test-token" }) };
+    }
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../js/connection.js"), "utf8"), sandbox);
+  return { P: root.PanelLab, root, element, lines, requests, dispatched };
+}
+test("connection only becomes ready on Online and greets once", async () => {
+  const f = setup();
+  await f.P.connect();
+  assert.equal(f.P.connected, false);
+  assert.equal(f.P.sendRequest("request"), false);
+  assert.equal(f.element("connectionLabel").textContent, "연결 중");
+  f.lines[0].emit(2);
+  f.lines[0].emit(2);
+  assert.equal(f.P.connected, true);
+  assert.equal(f.lines[0].greetings, 1);
+  assert.equal(f.P.sendRequest("request"), true);
+  assert.equal(f.dispatched[0].payload.text, "request");
+  assert.equal(f.requests[0].url, "/api/chatToken");
+  assert.equal(f.requests[0].options.body, undefined);
+  f.P.disconnect();
+});
+test("terminal status permits a clean new connection", async () => {
+  const f = setup();
+  await f.P.connect(); f.lines[0].emit(3);
+  assert.equal(f.element("retryConnect").hidden, false);
+  assert.equal(f.P.connected, false);
+  await f.P.connect();
+  assert.equal(f.lines[0].ended, true);
+  assert.equal(f.lines[0].unsubscribed, true);
+  f.lines[0].emit(2);
+  assert.equal(f.P.connected, false);
+  f.lines[1].emit(2);
+  assert.equal(f.P.connected, true);
+  f.P.disconnect();
+});
+test("missing Web Chat and token endpoint errors are explicit", async () => {
+  const missing = setup(); missing.root.WebChat = null;
+  await missing.P.connect();
+  assert.match(missing.element("statusText").textContent, /구성 요소/);
+  for (const status of [401, 403, 404, 429, 503, 502]) {
+    const f = setup(async () => ({ ok: false, status }));
+    await f.P.connect();
+    assert.equal(f.lines.length, 0);
+    assert.equal(f.P.connected, false);
+    assert.equal(f.element("retryConnect").hidden, false);
+  }
+});
+test("invalid token, JSON and network failures cannot show connected", async () => {
+  for (const response of [
+    async () => ({ ok: true, json: async () => ({ token: " " }) }),
+    async () => ({ ok: true, json: async () => { throw new SyntaxError("test"); } }),
+    async () => { throw new Error("offline"); }
+  ]) {
+    const f = setup(response); await f.P.connect();
+    assert.equal(f.P.connected, false);
+    assert.equal(f.element("status").hidden, false);
+    assert.equal(f.lines.length, 0);
+  }
+});
+test("stale token response cannot replace newer connection", async () => {
+  const pending = [];
+  const f = setup(() => new Promise((resolve) => pending.push(resolve)));
+  const first = f.P.connect(), second = f.P.connect();
+  pending[1]({ ok: true, json: async () => ({ token: "new" }) }); await second;
+  pending[0]({ ok: true, json: async () => ({ token: "old" }) }); await first;
+  assert.equal(f.lines.length, 1);
+  f.P.disconnect();
+});

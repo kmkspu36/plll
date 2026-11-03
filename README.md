@@ -53,3 +53,38 @@ steps. CPU defaults to unspecified.
 With Node.js 22+ installed, run `node test/analyzer.test.js` and the additional
 `node --test test/*.test.js` checks. API checks use `npm test` inside `api`.
 No live broker credential is needed for unit tests.
+
+## Workspace behavior
+
+- The dark, Korean chat workspace keeps results closed until requested or detected.
+  At mobile widths, chat, menu and results each use the full screen.
+- Quick actions send ordinary requests to the same agent, including the selected
+  GX Works version and CPU (unspecified by default). They are disabled offline.
+- New conversations and reconnects start a new Direct Line session. Recent
+  conversations are read-only local archives, **not server conversation resume**.
+  A project switch starts a new conversation; delayed replies remain associated
+  with their original project and conversation.
+- Incoming message activities, including text and attachment metadata, are
+  preserved locally. Results offer original-response inspection and file export.
+  Old results created before raw-activity preservation are explicitly labelled.
+  A project export includes conversations, results and the approved working copy.
+- Correction proposals preserve both versions. Approval updates only a browser
+  working copy, available in project settings; it never writes to a PLC.
+- Only complete serial LD/LDI/AND/ANI rungs with one OUT/SET/RST are visualized.
+  OR, branching, unknown instructions, incomplete rungs and extra operands fall
+  back to their unchanged source. This is not a Mitsubishi compiler or validator.
+- Upload controls are intentionally disabled until the existing broker/agent
+  upload path and supported file types have been verified end to end.
+- Browser storage is not encrypted or synchronized. Quota errors are reported
+  without silently trimming results. Export important work; malformed storage is
+  not automatically overwritten. Clear site data only after backing it up.
+
+## Verification scope
+
+Unit tests use isolated fixtures, not a live agent or production credentials.
+They cover response parsing, raw archives, project ownership, approval, bounded
+diffs, safe ladder fallback, connection transitions and token-server failures.
+Local responsive checks cover 1440px, 1024px and 390px layouts with an explicitly
+unconfigured token server. Real token issuance, agent responses, expiration/
+reconnection on the service, file handling and GX Works compatibility still
+require an authenticated deployment and the existing broker owner's verification.

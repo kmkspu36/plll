@@ -4,6 +4,7 @@
   function diffLines(a, b) {
     var x = a.split("\n"), y = b.split("\n");
     var n = x.length, m = y.length, i, j;
+    if (n * m > 1000000) throw new RangeError("코드가 커서 줄 단위 비교를 생략했습니다. 수정 전후 원문을 확인해 주세요.");
     var L = [];
     for (i = 0; i <= n; i++) { L.push(new Array(m + 1).fill(0)); }
     for (i = n - 1; i >= 0; i--) {

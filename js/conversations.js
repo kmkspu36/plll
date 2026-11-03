@@ -1,6 +1,6 @@
 (function (root) {
   "use strict";
-  var P = root.PanelLab, key = "panellab.conversations.v1", activeId = null, records = [];
+  var P = root.PanelLab, key = "panellab.conversations.v1", activeId = null, records = [], storageBlocked = false;
   function notify(message) {
     root.dispatchEvent(new CustomEvent("panellab:error", { detail: message }));
   }
@@ -11,11 +11,15 @@
     })) throw new Error("Invalid conversations");
   } catch (error) {
     records = [];
+    storageBlocked = true;
     setTimeout(function () { notify("저장된 대화 기록을 읽지 못했습니다. 저장소를 확인해 주세요."); }, 0);
   }
   function persist() {
-    try { localStorage.setItem(key, JSON.stringify(records)); }
-    catch (error) { notify("대화를 저장하지 못했습니다. 저장 공간을 확인하고 원본을 내보내 주세요."); }
+    if (storageBlocked) notify("대화 저장소를 복구해야 합니다. 현재 대화를 파일로 내보내 주세요.");
+    else {
+      try { localStorage.setItem(key, JSON.stringify(records)); }
+      catch (error) { notify("대화를 저장하지 못했습니다. 저장 공간을 확인하고 원본을 내보내 주세요."); }
+    }
     root.dispatchEvent(new CustomEvent("panellab:conversations"));
   }
   function active() { return records.find(function (c) { return c.id === activeId; }) || null; }

@@ -3,80 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PanelLab – PLC AI Creative Agent</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="기존 Copilot Studio 통합운영 에이전트와 함께하는 PLC 엔지니어링 작업 공간">
+  <title>PanelLab — PLC Engineering AI Workspace</title>
   <link rel="stylesheet" href="css/panellab.css">
 </head>
 <body>
-  <div id="app" class="app" data-view="chat">
+  <a class="skip" href="#workspace">작업 공간으로 건너뛰기</a>
+  <div id="app" class="app" data-view="chat" data-results="closed">
     <aside class="nav" aria-label="주 메뉴">
-      <div class="brand"><span class="logo">PL</span><span>PanelLab</span></div>
+      <a class="brand" href="./" aria-label="PanelLab 홈"><span class="logo">PL</span><span>PanelLab<small>ENGINEERING WORKSPACE</small></span></a>
+      <button id="newConversation" class="btn primary new-chat" type="button"><span aria-hidden="true">+</span> 새 대화</button>
+      <div class="nav-section">WORKSPACE</div>
+      <nav>
+        <button data-nav="home" aria-current="page" type="button">AI 작업실</button>
+        <button data-nav="project" type="button">프로젝트</button>
+        <button data-nav="saved" type="button">저장된 결과</button>
+      </nav>
       <div class="proj">
-        <label for="projectSelect" class="small">프로젝트</label>
+        <label for="projectSelect" class="small">현재 프로젝트</label>
         <select id="projectSelect"></select>
         <div id="projectName" class="pname"></div>
         <div id="projectMeta" class="small"></div>
         <button id="editProject" class="btn sm" type="button">프로젝트 설정</button>
       </div>
-      <nav>
-        <button data-nav="home" aria-current="page" type="button">홈</button>
-        <button data-nav="work" type="button">AI 작업실</button>
-        <button data-nav="draw" type="button">PLC 작화</button>
-        <button data-nav="check" type="button">오류 검사</button>
-        <button data-nav="code" type="button">코드 작성</button>
-        <button data-nav="blueprint" type="button">도면 분석</button>
-        <button data-nav="project" type="button">프로젝트</button>
-        <button data-nav="history" type="button">작업 기록</button>
-        <button data-nav="settings" type="button">설정</button>
-      </nav>
+      <div class="nav-section">최근 대화 <span class="small">로컬 기록</span></div>
+      <div id="recentConversations" class="recent" aria-label="최근 대화"></div>
+      <div class="nav-bottom">
+        <button data-nav="settings" class="btn" type="button">설정 및 연결 안내</button>
+        <p>기존 통합운영 에이전트 1개<br>CPU·명령어 호환성 별도 확인</p>
+      </div>
     </aside>
 
-    <main class="chat">
+    <main id="workspace" class="chat" tabindex="-1">
       <header class="chat-head">
-        <div>
-          <div class="eyebrow">PANEL LAB · AI WORKSPACE</div>
-          <h1>AI 작업실</h1>
+        <div><div class="eyebrow">PLC ENGINEERING AI</div><h1>AI 작업실</h1></div>
+        <div class="header-actions">
+          <div class="connection-chip offline" role="status"><span class="status-dot"></span><span id="connectionLabel">연결 준비</span></div>
+          <button id="toggleResults" class="btn sm" type="button" aria-expanded="false" aria-controls="resultsPanel">결과 열기</button>
         </div>
-        <div class="connection-chip"><span class="status-dot"></span><span id="connectionLabel">연결 확인 중</span></div>
       </header>
+      <div id="notice" class="notice" role="alert" hidden><span id="noticeText"></span><button id="dismissNotice" type="button" class="btn sm" aria-label="알림 닫기">닫기</button></div>
       <div id="status" class="status" role="status" aria-live="polite">
         <span id="statusText">채팅에 연결하는 중입니다...</span>
-        <button id="retryConnect" class="btn sm" type="button" hidden>연결 재시도</button>
+        <button id="retryConnect" class="btn sm" type="button" hidden>새 대화로 재연결</button>
       </div>
-      <div id="webchat"></div>
+      <section id="welcome" class="welcome" aria-label="시작 안내">
+        <div class="welcome-mark" aria-hidden="true">PL</div>
+        <div class="eyebrow">YOUR ENGINEERING COPILOT</div>
+        <h2>설계부터 검토까지,<br>대화로 시작하세요.</h2>
+        <p>기존 통합운영 에이전트에 요구사항을 전달하세요.<br>코드와 분석 결과는 필요한 순간에 옆에서 확인합니다.</p>
+        <div class="quick-actions">
+          <button data-task="draw" type="button"><strong>PLC 작화</strong><span>동작 조건으로 래더 요청</span></button>
+          <button data-task="check" type="button"><strong>오류 검사</strong><span>코드를 붙여넣고 검토 요청</span></button>
+          <button data-task="fix" type="button"><strong>코드 수정</strong><span>원본을 보존하고 수정안 비교</span></button>
+          <button data-task="code" type="button"><strong>PLC 코드 생성</strong><span>Mitsubishi · GX Works2 / 3</span></button>
+        </div>
+        <div class="welcome-foot">CPU와 명령어 호환성은 확인 전까지 미정으로 유지합니다.</div>
+      </section>
+      <div id="webchat" aria-label="기존 Copilot Studio 에이전트 채팅"></div>
+      <footer class="chat-foot"><span id="sendStatus" role="status" aria-live="polite">메시지는 기존 에이전트로 전송됩니다.</span><span>파일 첨부: 지원 확인 전 비활성화</span></footer>
     </main>
 
-    <section class="results" aria-label="PLC 작업 결과">
+    <section id="resultsPanel" class="results" aria-label="PLC 작업 결과" hidden>
       <div class="result-head">
-        <div>
-          <div class="eyebrow">PROJECT OUTPUT</div>
-          <h2>PLC 작업 결과</h2>
-        </div>
-        <button id="clearResults" class="btn sm" type="button" title="현재 프로젝트의 결과만 삭제">결과 비우기</button>
+        <div><div class="eyebrow">AGENT OUTPUT</div><h2>작업 결과</h2></div>
+        <div class="row"><button id="clearResults" class="btn sm" type="button">결과 비우기</button><button id="closeResults" class="btn sm" type="button" aria-label="결과 닫기">닫기</button></div>
       </div>
-      <label class="result-search">
-        <span aria-hidden="true">⌕</span>
-        <input id="resultSearch" type="search" placeholder="결과에서 검색..." aria-label="PLC 작업 결과 검색">
-        <button id="clearSearch" type="button" aria-label="검색어 지우기" hidden>×</button>
-      </label>
-      <div id="resultTabs" class="tabs" role="tablist"></div>
+      <label class="result-search"><input id="resultSearch" type="search" placeholder="결과 검색" aria-label="PLC 작업 결과 검색"><button id="clearSearch" type="button" aria-label="검색어 지우기" hidden>×</button></label>
+      <div id="resultTabs" class="tabs" role="tablist" aria-label="결과 종류"></div>
       <div id="resultBody" class="rbody"></div>
+      <p class="result-disclaimer">에이전트 응답 기반 표시 · PLC 컴파일 및 실장비 검증을 대체하지 않습니다.</p>
     </section>
-
     <nav class="mobile-tabs" aria-label="화면 전환">
       <button class="mtab" data-view="chat" type="button">채팅</button>
       <button class="mtab" data-view="results" type="button">결과</button>
       <button class="mtab" data-view="menu" type="button">메뉴</button>
     </nav>
   </div>
-
-  <dialog id="dlg">
-    <div class="dlg-h"><h3 id="dlgTitle"></h3><button id="dlgClose" class="btn sm" type="button" aria-label="닫기">닫기</button></div>
+  <dialog id="dlg" aria-labelledby="dlgTitle">
+    <div class="dlg-h"><h3 id="dlgTitle"></h3><button id="dlgClose" class="btn sm" type="button">닫기</button></div>
     <div id="dlgBody"></div>
   </dialog>
-
   <script src="https://cdn.botframework.com/botframework-webchat/4.18.0/webchat.js"></script>
   <script src="js/analyzer.js"></script>
   <script src="js/diff.js"></script>
+  <script src="js/ladder.js"></script>
   <script src="js/projects.js"></script>
   <script src="js/conversations.js"></script>
   <script src="js/store.js"></script>

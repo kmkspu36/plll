@@ -3,12 +3,19 @@
   "use strict";
   var PKEY = "panellab.projects.v1", RKEY = "panellab.results.v1", AKEY = "panellab.activeProject.v1";
   var listeners = [];
+  var storageBlocked = false;
+  function notify(message) {
+    setTimeout(function () { root.dispatchEvent(new CustomEvent("panellab:error", { detail: message })); }, 0);
+  }
 
   function load(key, fallback) {
-    try { var v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch (e) { return fallback; }
+    try { var v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; }
+    catch (e) { storageBlocked = true; notify("저장된 프로젝트 또는 결과를 읽지 못했습니다. 기존 데이터 보호를 위해 저장을 중지했습니다."); return fallback; }
   }
   function save(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; }
+    if (storageBlocked) { notify("저장소 복구가 필요합니다. 현재 작업을 파일로 저장해 주세요."); return false; }
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch (e) { notify("브라우저 저장에 실패했습니다. 데이터는 현재 화면에만 있습니다. 파일로 저장해 주세요."); return false; }
   }
   function uid() { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
@@ -16,6 +23,12 @@
   var results = load(RKEY, []);
   var history = [];
   var activeId = load(AKEY, null);
+  if (!Array.isArray(projects) || projects.some(function (p) { return !p || typeof p.id !== "string"; }) ||
+      !Array.isArray(results) || results.some(function (r) { return !r || typeof r.projectId !== "string" || !r.data; })) {
+    storageBlocked = true;
+    projects = []; results = [];
+    notify("저장 데이터 형식이 올바르지 않습니다. 기존 저장소를 덮어쓰지 않습니다.");
+  }
 
   if (!projects.length) {
     projects.push({ id: uid(), name: "기본 프로젝트", vendor: "", software: "GX Works3", cpu: "", createdAt: new Date().toISOString() });
@@ -23,7 +36,7 @@
   }
   if (!projects.some(function (p) { return p.id === activeId; })) activeId = projects[0].id;
 
-  function emit() { listeners.forEach(function (fn) { try { fn(); } catch (e) { /* ignore */ } }); }
+  function emit() { listeners.forEach(function (fn) { fn(); }); }
   function onChange(fn) { listeners.push(fn); }
 
   function addProject(p) {
@@ -58,10 +71,9 @@
       type: res.type, title: res.title, data: res.data, original: original || null, approval: "proposed"
     };
     results.push(rec);
-    if (!save(RKEY, results)) {
-      results = results.slice(-50); save(RKEY, results);
-    }
+    save(RKEY, results);
     emit();
+    root.dispatchEvent(new CustomEvent("panellab:result", { detail: rec }));
     return rec;
   }
   function resultsFor(projectId) {
@@ -82,12 +94,25 @@
     results = results.filter(function (r) { return r.projectId !== projectId; });
     save(RKEY, results); emit();
   }
+  function approve(key) {
+    var rec = results.find(function (r) { return r.key === key && r.type === "correction"; });
+    if (!rec) throw new Error("Correction not found");
+    rec.approval = "approved";
+    rec.approvedAt = new Date().toISOString();
+    var project = projects.find(function (p) { return p.id === rec.projectId; });
+    if (project) {
+      project.workingCopy = { before: rec.data.before, code: rec.data.after, original: rec.original,
+        sourceKey: rec.key, approvedAt: rec.approvedAt };
+      save(PKEY, projects);
+    }
+    save(RKEY, results); emit();
+  }
 
   root.PanelLab = root.PanelLab || {};
   root.PanelLab.data = {
     projects: function () { return projects.slice(); }, active: active, setActive: setActive,
     addProject: addProject, updateProject: updateProject, addResult: addResult,
     resultsFor: resultsFor, addHistory: addHistory, historyFor: historyFor,
-    clearResults: clearResults, onChange: onChange
+    clearResults: clearResults, onChange: onChange, approve: approve
   };
 })(window);

@@ -9,6 +9,7 @@
 
   function show(message, state, retryable) {
     ready = state === 2;
+    document.getElementById("webchat").inert = !ready;
     status.hidden = ready;
     statusText.textContent = message;
     document.getElementById("connectionLabel").textContent = labels[state] || "연결 확인 중";
@@ -39,10 +40,11 @@
       return;
     }
     controller = new AbortController();
-    var timeout = setTimeout(function () { controller && controller.abort(); }, 20000);
+    var requestController = controller;
+    var timeout = setTimeout(function () { requestController.abort(); }, 20000);
     try {
       var response = await fetch("/api/chatToken", {
-        method: "POST", credentials: "same-origin", cache: "no-store", signal: controller.signal
+        method: "POST", credentials: "same-origin", cache: "no-store", signal: requestController.signal
       });
       if (current !== generation) return;
       if (!response.ok) {

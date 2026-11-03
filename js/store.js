@@ -37,6 +37,18 @@
             }
           } catch (e) {
             if (window.console) console.warn("PanelLab observer error", e);
+            root.dispatchEvent(new CustomEvent("panellab:error", { detail: "응답의 보조 표시 또는 저장에 실패했습니다. 채팅 원문을 확인해 주세요." }));
+          }
+          if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_PENDING") {
+            root.dispatchEvent(new CustomEvent("panellab:send", { detail: "메시지 전송 중" }));
+          } else if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_FULFILLED") {
+            root.dispatchEvent(new CustomEvent("panellab:send", { detail: "메시지 전송됨 · 에이전트 응답 대기" }));
+          } else if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_REJECTED") {
+            root.dispatchEvent(new CustomEvent("panellab:send", { detail: "메시지 전송 실패 · 채팅에서 재시도해 주세요." }));
+          } else if (action && action.type === "DIRECT_LINE/INCOMING_ACTIVITY" &&
+                     action.payload && action.payload.activity && action.payload.activity.from &&
+                     action.payload.activity.from.role === "bot") {
+            root.dispatchEvent(new CustomEvent("panellab:send", { detail: "에이전트 응답 수신" }));
           }
           return next(action);
         };

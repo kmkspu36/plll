@@ -13,7 +13,7 @@
     plc_code: "PLC 코드", ladder: "작화", error_report: "오류 검사", correction: "코드 수정",
     image: "이미지", document: "문서", adaptive_card: "Adaptive Card", structured_json: "JSON"
   };
-  var DISCLAIMER = "AI 자체 점검 결과입니다. GX Works 컴파일 및 실제 PLC 검증을 대체하지 않습니다.";
+  var DISCLAIMER = "기존 에이전트의 응답을 표시한 결과입니다. GX Works 컴파일 및 실제 PLC 검증을 대체하지 않습니다.";
 
   var tab = "all";
   var body = document.getElementById("resultBody");
@@ -24,6 +24,16 @@
     if (cls) e.className = cls;
     if (text != null) e.textContent = text;
     return e;
+  }
+  function download(text, name, mime) {
+    var url = URL.createObjectURL(new Blob([text], { type: mime || "text/plain;charset=utf-8" }));
+    var a = el("a"); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function notify(message) {
+    document.getElementById("noticeText").textContent = message;
+    document.getElementById("notice").hidden = false;
   }
   function fmtTime(iso) {
     var d = new Date(iso);
@@ -67,7 +77,13 @@
   function diffView(before, after) {
     var wrap = el("div", "code diff");
     var bi = 0, ai = 0;
-    P.diff.diffLines(before, after).forEach(function (op) {
+    var operations;
+    try { operations = P.diff.diffLines(before, after); }
+    catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      return note(error.message);
+    }
+    operations.forEach(function (op) {
       var row = el("div", "cl " + op.t);
       var n = op.t === "add" ? ++ai : op.t === "del" ? ++bi : (++bi, ++ai);
       row.appendChild(el("span", "ln", String(n)));
@@ -83,27 +99,6 @@
 
   /* ---------- ladder ---------- */
   var SVGNS = "http://www.w3.org/2000/svg";
-  function parseIL(src) {
-    var rungs = [], cur = null;
-    var lines = src.split("\n").map(function (l) { return l.replace(/;.*$/, "").trim(); }).filter(Boolean);
-    for (var i = 0; i < lines.length; i++) {
-      var t = lines[i].split(/\s+/), op = t[0].toUpperCase(), dev = t[1];
-      if (op === "END") continue;
-      if (op === "LD" || op === "LDI") {
-        if (!dev) return null;
-        if (!cur || cur.coils.length) { cur = { els: [], coils: [] }; rungs.push(cur); }
-        else return null;
-        cur.els.push({ main: { neg: op === "LDI", dev: dev }, alts: [] });
-      } else if ((op === "OR" || op === "ORI") && cur && dev && !cur.coils.length) {
-        cur.els[cur.els.length - 1].alts.push({ neg: op === "ORI", dev: dev });
-      } else if ((op === "AND" || op === "ANI") && cur && dev && !cur.coils.length) {
-        cur.els.push({ main: { neg: op === "ANI", dev: dev }, alts: [] });
-      } else if ((op === "OUT" || op === "SET" || op === "RST") && cur && dev) {
-        cur.coils.push({ kind: op, dev: dev });
-      } else return null;
-    }
-    return rungs.length ? rungs : null;
-  }
   function svg(tag, attrs, text) {
     var e = document.createElementNS(SVGNS, tag);
     Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
@@ -156,6 +151,7 @@
         g.appendChild(svg("line", { x1: cx + 54, y1: y, x2: cx + 70, y2: y }));
         cx += 90;
       });
+      g.appendChild(svg("line", { x1: cx - 20, y1: y, x2: maxW + 10, y2: y }));
       g.appendChild(svg("line", { x1: maxW + 10, y1: y - 14, x2: maxW + 10, y2: y + 14, "class": "rail" }));
       s.appendChild(g);
     });
@@ -166,7 +162,7 @@
     var bar = el("div", "zoom-bar");
     var inner = el("div", "zoom-inner");
     var scale = 1;
-    function apply() { inner.style.transform = "scale(" + scale + ")"; lbl.textContent = Math.round(scale * 100) + "%"; }
+    function apply() { inner.style.zoom = String(scale); lbl.textContent = Math.round(scale * 100) + "%"; }
     var lbl = el("span", "zoom-lbl", "100%");
     [["−", -0.25], ["+", 0.25]].forEach(function (b) {
       var btn = el("button", "btn sm", b[0]);
@@ -192,6 +188,21 @@
     h.appendChild(actions);
     c.appendChild(h);
     extra(c, actions);
+    var save = el("button", "btn sm", "파일 저장"); save.type = "button";
+    save.onclick = function () {
+      var text = rec.type === "plc_code" ? rec.data.code : rec.type === "ladder" ? rec.data.source : JSON.stringify(rec, null, 2);
+      download(text, "panellab-" + rec.type + (rec.type === "plc_code" || rec.type === "ladder" ? ".txt" : ".json"));
+    };
+    actions.appendChild(save);
+    var raw = el("details");
+    raw.appendChild(el("summary", null, "AI 원본 응답"));
+    if (rec.original) {
+      raw.appendChild(el("pre", "raw-text", rec.original.text || "(텍스트 없음 · 아래 Activity 원본 확인)"));
+      raw.appendChild(el("pre", "json", JSON.stringify(rec.original, null, 2)));
+    } else {
+      raw.appendChild(note("이전 버전에서 저장한 결과에는 원본 Activity가 없습니다. 추출 결과만 보존되어 있습니다."));
+    }
+    c.appendChild(raw);
     return c;
   }
   function note(txt) { return el("p", "note", txt); }
@@ -229,11 +240,11 @@
         });
       case "ladder":
         return card(rec, function (c, a) {
-          var rungs = parseIL(d.source);
+          var rungs = P.ladder.parseIL(d.source);
           a.appendChild(copyBtn(function () { return d.source; }));
           if (rungs) {
             c.appendChild(zoomable(renderLadder(rungs), "작화"));
-            c.appendChild(note("간단한 LD/OR/AND/OUT 니모닉만 도식화합니다. 실제 작화는 GX Works에서 확인하세요."));
+            c.appendChild(note("직렬 접점 LD/LDI/AND/ANI와 단일 OUT/SET/RST만 표시합니다. 주소·명령어 호환성과 실제 작화는 GX Works에서 확인하세요."));
           } else {
             c.appendChild(note("도식으로 변환할 수 없는 형식이라 원문을 표시합니다."));
             c.appendChild(codeView(d.source));
@@ -244,12 +255,12 @@
         return card(rec, function (c, a) {
           a.appendChild(copyBtn(function () {
             return d.items.map(function (i) {
-              return ["유형: " + i.type, "위치: " + i.location, "원인: " + i.cause, "수정 방법: " + i.fix, "검토 상태: " + (i.status || "AI 자체 점검")].join("\n");
+              return ["유형: " + i.type, "위치: " + i.location, "원인: " + i.cause, "수정 방법: " + i.fix, "검토 상태: " + (i.status || "응답에 검토 상태 없음")].join("\n");
             }).join("\n\n");
           }));
           d.items.forEach(function (i) {
             var dl = el("dl", "err");
-            [["오류 유형", i.type], ["오류 위치", i.location], ["원인", i.cause], ["수정 방법", i.fix], ["검토 상태", i.status || "AI 자체 점검 (미검증)"]].forEach(function (kv) {
+            [["오류 유형", i.type], ["오류 위치", i.location], ["원인", i.cause], ["수정 방법", i.fix], ["검토 상태", i.status || "응답에 검토 상태 없음"]].forEach(function (kv) {
               dl.appendChild(el("dt", null, kv[0])); dl.appendChild(el("dd", null, kv[1] || "-"));
             });
             c.appendChild(dl);
@@ -258,7 +269,17 @@
         });
       case "correction":
         return card(rec, function (c, a) {
-          a.appendChild(copyBtn(function () { return d.after; }));
+          var proposalCopy = copyBtn(function () { return d.after; });
+          proposalCopy.textContent = "수정안 복사";
+          a.appendChild(proposalCopy);
+          var approve = el("button", "btn sm primary", rec.approval === "approved" ? "승인됨" : "수정안 승인");
+          approve.type = "button"; approve.disabled = rec.approval === "approved";
+          approve.onclick = function () {
+            if (confirm("수정안을 이 프로젝트의 브라우저 작업본으로 반영할까요? 원본은 보존되며 PLC 장비에는 전송하지 않습니다.")) D.approve(rec.key);
+          };
+          a.appendChild(approve);
+          c.appendChild(note(rec.approval === "approved" ? "사용자가 승인한 브라우저 작업본입니다. PLC에 적용되지 않았습니다." :
+            "미승인 수정 제안입니다. 승인 전에는 현재 작업본에 반영하지 않습니다. 수정 이유는 AI 원본 응답을 확인하세요."));
           c.appendChild(el("h4", null, "변경 부분 강조"));
           c.appendChild(diffView(d.before, d.after));
           [["수정 전", d.before], ["수정 후", d.after]].forEach(function (p) {
@@ -324,6 +345,7 @@
       var n = ty ? all.filter(function (r) { return ty.indexOf(r.type) >= 0; }).length : all.length;
       b.textContent = t[1] + (n ? " " + n : "");
       b.setAttribute("aria-selected", String(t[0] === tab));
+      b.tabIndex = t[0] === tab ? 0 : -1;
     });
     document.getElementById("clearSearch").hidden = !query;
     document.getElementById("clearResults").disabled = all.length === 0;
@@ -362,8 +384,17 @@
   /* ---------- navigation / dialogs ---------- */
   var app = document.getElementById("app");
   function setView(v) {
+    if (v === "results") setResults(true);
     app.dataset.view = v;
     document.querySelectorAll(".mtab").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.view === v)); });
+  }
+  function setResults(open) {
+    app.dataset.results = open ? "open" : "closed";
+    document.getElementById("resultsPanel").hidden = !open;
+    var toggle = document.getElementById("toggleResults");
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.textContent = open ? "결과 닫기" : "결과 열기";
+    if (!open && app.dataset.view === "results") setView("chat");
   }
   var dlg = document.getElementById("dlg"), dlgTitle = document.getElementById("dlgTitle"), dlgBody = document.getElementById("dlgBody");
   function openDialog(title, build) {
@@ -397,6 +428,13 @@
       form.onsubmit = function (e) { e.preventDefault(); D.updateProject(proj.id, vals()); dlg.close(); };
       add.onclick = function () { D.addProject(vals()); dlg.close(); };
       row.appendChild(save); row.appendChild(add); form.appendChild(row); b.appendChild(form);
+      if (proj.workingCopy) {
+        var working = el("details"); working.appendChild(el("summary", null, "승인된 브라우저 작업본"));
+        working.appendChild(codeView(proj.workingCopy.code));
+        working.appendChild(copyBtn(function () { return proj.workingCopy.code; }));
+        b.appendChild(working);
+        b.appendChild(note("브라우저 작업본이며 GX Works 또는 PLC에 자동 반영되지 않습니다."));
+      }
       var clr = el("button", "btn danger", "이 프로젝트의 작업 결과 삭제"); clr.type = "button";
       clr.onclick = function () { if (confirm("이 프로젝트의 저장된 작업 결과를 삭제할까요? 채팅 내용은 영향받지 않습니다.")) { D.clearResults(proj.id); dlg.close(); } };
       b.appendChild(clr);
@@ -419,20 +457,31 @@
     openDialog("설정 / 상태", function (b) {
       [
         "연결: 기존 Copilot Studio 통합운영 에이전트 1개 (Direct Line 토큰 broker 방식).",
-        "브라우저에는 Direct Line Secret이 없으며, broker가 발급한 단기 토큰만 사용합니다.",
-        "프로젝트와 작업 결과는 이 브라우저(localStorage)에만 저장됩니다. 채팅 기록은 Web Chat/에이전트가 관리합니다.",
+        "서버가 기존 Broker의 인증값을 관리하고 브라우저에는 단기 토큰만 전달합니다. 서버 설정과 호스팅 로그인이 필요합니다.",
+        "프로젝트·결과·대화 원본은 이 브라우저(localStorage)에 저장됩니다. 다른 기기에 동기화되지 않습니다. 민감한 PLC 코드는 공유 기기에서 입력하지 마세요.",
+        "최근 대화는 읽기 전용 기록입니다. 새 대화와 재연결은 새 서버 대화를 시작하며 이전 대화를 자동으로 재개하지 않습니다.",
+        "응답 분류 형식과 파일 업로드는 실제 에이전트에서 확인이 필요합니다. 업로드는 비활성화되어 있습니다.",
+        "이전에 공개된 Broker 인증값은 서버 소유자가 폐기·교체해야 합니다. 저장소에서 제거하는 것만으로 무효화되지 않습니다.",
         DISCLAIMER
       ].forEach(function (t) { b.appendChild(el("p", null, t)); });
+      var login = el("a", "doc", "배포 사이트 로그인");
+      login.href = "/.auth/login/github";
+      b.appendChild(note("아래 링크는 Azure Static Web Apps의 GitHub 로그인이 구성된 배포에서 사용합니다. 호스팅 공급자 설정은 별도로 필요합니다."));
+      b.appendChild(login);
+      var exportAll = el("button", "btn", "현재 프로젝트 기록 내보내기");
+      exportAll.type = "button";
+      exportAll.onclick = function () {
+        var project = D.active();
+        download(JSON.stringify({ project: project, results: D.resultsFor(project.id), conversations: P.conversations.forProject(project.id) }, null, 2),
+          "panellab-project.json", "application/json");
+      };
+      b.appendChild(el("p")).appendChild(exportAll);
     });
   }
 
   var NAV = {
     home: function () { setView("chat"); },
-    work: function () { setView("chat"); },
-    draw: function () { setTab("ladder"); setView("results"); },
-    check: function () { setTab("error"); setView("results"); },
-    code: function () { setTab("code"); setView("results"); },
-    blueprint: function () { setTab("files"); setView("results"); },
+    saved: function () { setTab("all"); setView("results"); },
     project: projectDialog, history: historyDialog, settings: settingsDialog
   };
   document.querySelectorAll("[data-nav]").forEach(function (b) {
@@ -445,8 +494,140 @@
   document.querySelectorAll(".mtab").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
   document.getElementById("projectSelect").onchange = function (e) { D.setActive(e.target.value); };
   document.getElementById("editProject").onclick = projectDialog;
+  document.getElementById("toggleResults").onclick = function () {
+    var open = app.dataset.results !== "open";
+    setResults(open);
+    if (open) setView("results");
+  };
+  document.getElementById("closeResults").onclick = function () {
+    setResults(false);
+    document.getElementById("toggleResults").focus();
+  };
+  document.getElementById("dismissNotice").onclick = function () { document.getElementById("notice").hidden = true; };
+  root.addEventListener("panellab:error", function (event) { notify(event.detail); });
+  root.addEventListener("panellab:send", function (event) { document.getElementById("sendStatus").textContent = event.detail; });
+  root.addEventListener("panellab:result", function (event) {
+    if (event.detail.projectId === D.active().id) {
+      setResults(true);
+      if (app.dataset.view === "menu") setView("chat");
+    }
+  });
+  tabsEl.addEventListener("keydown", function (event) {
+    if (["ArrowLeft", "ArrowRight", "Home", "End"].indexOf(event.key) < 0) return;
+    event.preventDefault();
+    var index = TABS.findIndex(function (t) { return t[0] === tab; });
+    index = event.key === "Home" ? 0 : event.key === "End" ? TABS.length - 1 :
+      (index + (event.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
+    setTab(TABS[index][0]);
+    tabsEl.querySelector('[data-tab="' + tab + '"]').focus();
+  });
+
+  function archiveDialog(conversation) {
+    openDialog(conversation.title, function (container) {
+      container.appendChild(note("로컬에 보존된 읽기 전용 대화입니다. 서버 대화 재개가 아닙니다. 원본 Activity에는 첨부 정보도 포함됩니다."));
+      var save = el("button", "btn", "대화 원본 저장"); save.type = "button";
+      save.onclick = function () { download(JSON.stringify(conversation, null, 2), "panellab-conversation.json", "application/json"); };
+      container.appendChild(save);
+      conversation.activities.forEach(function (entry) {
+        var item = el("article", "archive-item");
+        item.appendChild(el("span", "badge", entry.direction === "outgoing" ? "사용자" : "기존 에이전트"));
+        item.appendChild(el("p", null, entry.activity.text || "(첨부 또는 텍스트 없는 메시지)"));
+        var raw = el("details"); raw.appendChild(el("summary", null, "Activity 원본"));
+        raw.appendChild(el("pre", "json", JSON.stringify(entry.activity, null, 2)));
+        item.appendChild(raw); container.appendChild(item);
+      });
+    });
+  }
+  function renderConversations() {
+    var list = document.getElementById("recentConversations");
+    list.textContent = "";
+    var conversations = P.conversations.forProject(D.active().id);
+    conversations.slice(0, 8).forEach(function (conversation) {
+      var button = el("button", null, conversation.title); button.type = "button";
+      button.title = "읽기 전용 기록: " + conversation.title;
+      button.onclick = function () { archiveDialog(conversation); };
+      list.appendChild(button);
+    });
+    if (!conversations.length) list.appendChild(el("span", "small", "아직 대화 기록이 없습니다."));
+    if (conversations.length > 8) {
+      var all = el("button", null, "전체 대화 기록 보기"); all.type = "button";
+      all.onclick = function () {
+        openDialog("모든 대화 기록", function (container) {
+          conversations.forEach(function (conversation) {
+            var button = el("button", "btn", conversation.title); button.type = "button";
+            button.onclick = function () { dlg.close(); archiveDialog(conversation); };
+            container.appendChild(el("p")).appendChild(button);
+          });
+        });
+      };
+      list.appendChild(all);
+    }
+    var current = P.conversations.active();
+    document.getElementById("welcome").hidden = !!(current && current.activities.length);
+  }
+  root.addEventListener("panellab:conversations", renderConversations);
+  function newConversation() {
+    P.conversations.create(D.active().id);
+    document.getElementById("sendStatus").textContent = "새 대화를 시작합니다. 이전 대화는 읽기 전용으로 보존됩니다.";
+    setView("chat");
+    setResults(false);
+    P.connect();
+  }
+  document.getElementById("newConversation").onclick = newConversation;
+  var currentProjectId = D.active().id;
+  D.onChange(function () {
+    if (D.active().id !== currentProjectId) {
+      currentProjectId = D.active().id;
+      newConversation();
+    }
+    renderConversations();
+  });
+
+  var TASKS = {
+    draw: ["PLC 작화 요청", "다음 동작 조건에 대한 래더 작화를 요청합니다."],
+    check: ["PLC 오류 검사", "다음 PLC 코드를 검토해 주세요. 이중 코일, 중복 주소, 자기유지, 미선언 변수, 접점·코일 사용 오류를 확인하고 위치·원인·수정 방법을 설명해 주세요."],
+    fix: ["PLC 코드 수정", "다음 PLC 코드의 수정안을 제안해 주세요. 수정 전 원문과 수정 후 코드, 변경 이유를 구분해 주세요. 사용자 승인 전에는 적용하지 않습니다."],
+    code: ["PLC 코드 생성", "다음 요구사항에 맞는 Mitsubishi PLC 코드와 설명을 요청합니다."]
+  };
+  function requestDialog(task) {
+    var definition = TASKS[task];
+    openDialog(definition[0], function (container) {
+      container.appendChild(note("기존 통합운영 에이전트에 전송할 요청입니다. 새 AI나 로컬 검사기를 사용하지 않습니다."));
+      var form = el("form", "form");
+      var label = el("label", "fld"); label.appendChild(el("span", null, task === "check" || task === "fix" ? "검토할 코드와 요구사항" : "동작 조건과 요구사항"));
+      var text = el("textarea"); text.required = true; text.maxLength = 50000;
+      text.placeholder = "CPU 모델, 입출력 조건, 인터록 조건 등 확인된 정보만 입력하세요.";
+      label.appendChild(text); form.appendChild(label);
+      var submit = el("button", "btn primary", "기존 에이전트에 전송"); submit.type = "submit";
+      submit.disabled = !P.connected;
+      var update = function () { submit.disabled = !P.connected; };
+      root.addEventListener("panellab:connection", update);
+      dlg.addEventListener("close", function () { root.removeEventListener("panellab:connection", update); }, { once: true });
+      form.appendChild(note("연결 완료 후 전송할 수 있습니다. 파일 업로드는 아직 지원 확인 전입니다."));
+      form.appendChild(submit); container.appendChild(form);
+      form.onsubmit = function (event) {
+        event.preventDefault();
+        if (!text.value.trim()) { text.setCustomValidity("요구사항이나 코드를 입력해 주세요."); text.reportValidity(); return; }
+        var project = D.active();
+        var request = [
+          definition[1], "프로젝트: " + project.name,
+          "PLC 제조사: " + (project.vendor || "Mitsubishi 대상 · 구체 모델 미확인"),
+          "소프트웨어: " + project.software, "CPU: " + (project.cpu || "미정"),
+          "확인되지 않은 명령어와 호환성을 단정하지 말고, 정보가 부족하면 질문해 주세요.",
+          "검증되지 않은 내용은 구분하고, PLC 적용 전 별도 검증이 필요함을 명시해 주세요.", "", text.value
+        ].join("\n");
+        if (!P.sendRequest(request)) { notify("에이전트 연결 후 다시 전송해 주세요."); return; }
+        dlg.close(); setView("chat");
+      };
+      text.addEventListener("input", function () { text.setCustomValidity(""); });
+    });
+  }
+  document.querySelectorAll("[data-task]").forEach(function (button) {
+    button.onclick = function () { requestDialog(button.dataset.task); };
+  });
 
   setView("chat");
   render();
+  renderConversations();
   P.connect();
 })(window);
