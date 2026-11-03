@@ -4,6 +4,6 @@
   "private": true,
   "main": "src/functions/chatToken.js",
   "engines": { "node": ">=22" },
-  "scripts": { "test": "node --test test/*.test.js" },
+  "scripts": { "test": "node --test test/*.test.js", "dev": "node dev.js" },
   "dependencies": { "@azure/functions": "^4.0.0" }
 }

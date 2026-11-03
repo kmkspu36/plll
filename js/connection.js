@@ -43,11 +43,38 @@
     var requestController = controller;
     var timeout = setTimeout(function () { requestController.abort(); }, 20000);
     try {
+      if (root.location && root.location.hostname.endsWith(".github.io")) {
+        show("현재 호스팅은 GitHub Pages입니다. Pages는 서버 토큰 중계를 실행할 수 없습니다. 기존 Broker를 안전하게 연결할 서버 배포가 필요합니다.", 4, false);
+        return;
+      }
       var response = await fetch("/api/chatToken", {
         method: "POST", credentials: "same-origin", cache: "no-store", signal: requestController.signal
       });
       if (current !== generation) return;
       if (!response.ok) {
+        var failure = {};
+        try { failure = await response.json(); } catch (error) {
+          if (current !== generation) return;
+        }
+        if (current !== generation) return;
+        var codes = {
+          SERVER_CONFIG_MISSING: "토큰 서버 설정이 누락되었습니다.",
+          SERVER_CONFIG_INVALID: "토큰 서버의 Broker URL 또는 허용 Origin 형식이 올바르지 않습니다.",
+          LOGIN_REQUIRED: "호스팅 로그인이 필요합니다. 로컬 실행은 서버의 개발 모드 설정을 확인해 주세요.",
+          ORIGIN_DENIED: "요청 Origin과 서버의 허용 Origin이 다릅니다.",
+          BROKER_REJECTED: "기존 Broker가 토큰 요청을 거부했습니다.",
+          BROKER_INVALID_JSON: "기존 Broker가 JSON이 아닌 응답을 반환했습니다.",
+          BROKER_TOKEN_MISSING: "기존 Broker 응답에 유효한 token 필드가 없습니다.",
+          BROKER_TIMEOUT: "기존 Broker의 응답 시간이 초과되었습니다.",
+          BROKER_NETWORK_ERROR: "토큰 서버에서 기존 Broker로 연결하지 못했습니다. DNS·TLS·네트워크 설정을 확인해 주세요.",
+          SERVER_INTERNAL_ERROR: "토큰 서버 내부 오류가 발생했습니다. 운영 로그를 확인해 주세요."
+        };
+        var knownKeys = ["PANEL_BROKER_URL", "PANEL_BROKER_SEALED", "PANEL_ALLOWED_ORIGIN"];
+        var missing = Array.isArray(failure.missing) ? failure.missing.filter(function (name) { return knownKeys.indexOf(name) >= 0; }) : [];
+        var detail = failure.code === "SERVER_CONFIG_MISSING" && missing.length ? " 누락 항목: " + missing.join(", ") + "." : "";
+        if (failure.code === "BROKER_REJECTED" && Number.isInteger(failure.upstreamStatus)) {
+          detail = " Broker HTTP " + failure.upstreamStatus + ". 인증값은 서버에서 확인해야 합니다.";
+        }
         var messages = {
           401: "서버 로그인이 필요합니다. 배포 사이트의 로그인 상태를 확인해 주세요.",
           403: "이 사이트에서 채팅 연결을 요청할 수 없습니다.",
@@ -55,7 +82,7 @@
           429: "연결 요청이 많습니다. 잠시 후 다시 시도해 주세요.",
           503: "토큰 서버의 인증 환경변수 또는 배포 설정이 필요합니다."
         };
-        show(messages[response.status] || "연결 요청 실패 (HTTP " + response.status + "). 다시 시도해 주세요.", 4, true);
+        show((codes[failure.code] || messages[response.status] || "연결 요청 실패 (HTTP " + response.status + ").") + detail, 4, true);
         return;
       }
       var data = await response.json();

@@ -5,6 +5,7 @@
     "FUNCTIONS_WORKER_RUNTIME": "node",
     "PANEL_BROKER_URL": "https://your-existing-broker.azurewebsites.net/api/directlineToken",
     "PANEL_BROKER_SEALED": "",
-    "PANEL_ALLOWED_ORIGIN": "https://your-panellab-site.example"
+    "PANEL_ALLOWED_ORIGIN": "http://127.0.0.1:4173",
+    "PANEL_LOCAL_DEVELOPMENT": "0"
   }
 }

@@ -115,3 +115,19 @@ test("stale token response cannot replace newer connection", async () => {
   assert.equal(f.lines.length, 1);
   f.P.disconnect();
 });
+test("actual missing setting names are shown without displaying arbitrary server data", async () => {
+  const f = setup(async () => ({
+    ok: false, status: 503,
+    json: async () => ({ code: "SERVER_CONFIG_MISSING", missing: ["PANEL_BROKER_SEALED", "private-value"] })
+  }));
+  await f.P.connect();
+  assert.match(f.element("statusText").textContent, /PANEL_BROKER_SEALED/);
+  assert.doesNotMatch(f.element("statusText").textContent, /private-value/);
+});
+test("GitHub Pages is explicitly identified as unsupported server hosting", async () => {
+  const f = setup();
+  f.root.location = { hostname: "kmkspu36.github.io" };
+  await f.P.connect();
+  assert.match(f.element("statusText").textContent, /GitHub Pages/);
+  assert.equal(f.requests.length, 0);
+});
