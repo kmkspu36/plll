@@ -48,13 +48,14 @@
   }
   function active() { return projects.filter(function (p) { return p.id === activeId; })[0]; }
 
-  function addResult(messageId, idx, res) {
+  function addResult(messageId, idx, res, context, original) {
     if (!res || res.type === "text") return null;
-    var key = messageId + ":" + idx + ":" + res.type;
+    var key = (context ? context.id + ":" : "") + messageId + ":" + idx + ":" + res.type;
     if (results.some(function (r) { return r.key === key; })) return null;
     var rec = {
-      key: key, messageId: messageId, receivedAt: new Date().toISOString(), projectId: activeId,
-      type: res.type, title: res.title, data: res.data
+      key: key, messageId: messageId, receivedAt: new Date().toISOString(),
+      projectId: context ? context.projectId : activeId, conversationId: context ? context.id : null,
+      type: res.type, title: res.title, data: res.data, original: original || null, approval: "proposed"
     };
     results.push(rec);
     if (!save(RKEY, results)) {
@@ -66,8 +67,8 @@
   function resultsFor(projectId) {
     return results.filter(function (r) { return r.projectId === projectId; });
   }
-  function addHistory(entry) {
-    history.push({ time: new Date().toISOString(), projectId: activeId, kind: entry.kind, text: entry.text });
+  function addHistory(entry, context) {
+    history.push({ time: new Date().toISOString(), projectId: context ? context.projectId : activeId, kind: entry.kind, text: entry.text });
     emit();
   }
   function historyFor(projectId) {

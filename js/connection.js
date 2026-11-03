@@ -1,91 +1,120 @@
-/* Existing Direct Line connection logic, preserved. Only change: `store` is passed to renderWebChat. */
 (function (root) {
   "use strict";
-  const BROKER_URL = "https://dl-broker-juwon-4jt3z.azurewebsites.net/api/directlineToken";
-  const SEALED = "dMTArtlCf7wR5Rsofg1zKtHagB7d_2qs9YQi_Z2yRKUvOCiQDbsJ_xt96MzdEeWE0Wm-dzh_YxrlHfkyFE64C2f_rwi86-HM5qmSZP29BhOFWrjVA_XeJn6wCm6WSifRdQgmR_mv4L0bd_l2E0l3qtJyMPdCEwuzHfdSDEBcCTE8d1FbCBGKpcOSg_uWRmwmlDuGpC7H7WVp-ztPblzu34KQVsLo337qLXAQFRj3NfN6Q8AYutwQThWhfB6jwYsY01Zv6gQ5PpGx-wKRj0SpA1jC2M199CZkG8hQnMe_NUUEWo-lb-HM_zD5jbQERqb_h9g2sM230JtAo8LyyVYvI7D0lRUCTaLehzWNv-q0NwVsmEiue187WS9PbFU_zxJhE-f7VoPg_wYbEfaAAFuYTzxR2uLJ8qu5aG_1xpKgdn1uI7Y6LvitqpRUCwQjDlAqMp9SJZSq0fZON_JxgirrOUgYJh2abMkW88Ga4Q6hV4fG3-pmP9Wq3h7_G6-6TTrzeTvDu10tlCQ8mk80kOEkhk-QjL0hyKgZyRAxBD46e2VGfnu8vR0U3KY2VDXVM9_7xnVsiN4fswe3uNmUzEF4sbUsUne112HBu-yNSSTsZDCNsJE_Nu-DIzrQT7LeYKs2g3S4Hwd2QRLkJRYSrXM";
-  const status = document.getElementById("status");
-  const statusText = document.getElementById("statusText");
-  const retryButton = document.getElementById("retryConnect");
-  const connectionLabel = document.getElementById("connectionLabel");
-  let connecting = false;
-  let rendered = false;
+  var P = root.PanelLab = root.PanelLab || {};
+  var directLine, subscription, controller, store, generation = 0, ready = false;
+  var status = document.getElementById("status");
+  var statusText = document.getElementById("statusText");
+  var retry = document.getElementById("retryConnect");
+  var labels = ["연결 준비", "연결 중", "연결됨", "토큰 만료", "연결 실패", "연결 종료"];
 
-  function showError(message, retryable) {
-    status.hidden = false;
+  function show(message, state, retryable) {
+    ready = state === 2;
+    status.hidden = ready;
     statusText.textContent = message;
-    retryButton.hidden = retryable === false;
-    retryButton.disabled = false;
-    connectionLabel.textContent = "연결되지 않음";
-    document.querySelector(".connection-chip").classList.add("offline");
+    document.getElementById("connectionLabel").textContent = labels[state] || "연결 확인 중";
+    document.querySelector(".connection-chip").classList.toggle("offline", !ready);
+    retry.hidden = !retryable;
+    retry.disabled = false;
+    P.connected = ready;
+    root.dispatchEvent(new CustomEvent("panellab:connection"));
+  }
+
+  function stop() {
+    generation++;
+    ready = false;
+    P.connected = false;
+    if (controller) controller.abort();
+    if (subscription) subscription.unsubscribe();
+    if (directLine) directLine.end();
+    controller = subscription = directLine = store = null;
   }
 
   async function connect() {
-    if (connecting || rendered) return;
-    connecting = true;
-    retryButton.disabled = true;
-    status.hidden = false;
-    statusText.textContent = "채팅에 연결하는 중입니다...";
-    if (!window.WebChat ||
-        typeof WebChat.createDirectLine !== "function" ||
-        typeof WebChat.renderWebChat !== "function") {
-      showError("채팅 구성 요소를 불러오지 못했습니다. 네트워크를 확인한 뒤 새로고침해 주세요.");
-      connecting = false;
+    stop();
+    var current = generation;
+    show("기존 통합운영 에이전트에 연결하는 중입니다...", 1, false);
+    if (!root.WebChat || typeof root.WebChat.createStore !== "function" ||
+        typeof root.WebChat.createDirectLine !== "function" || typeof root.WebChat.renderWebChat !== "function") {
+      show("채팅 구성 요소를 불러오지 못했습니다. 네트워크를 확인하고 다시 시도해 주세요.", 4, true);
       return;
     }
-
-    let response;
+    controller = new AbortController();
+    var timeout = setTimeout(function () { controller && controller.abort(); }, 20000);
     try {
-      // Keep this a simple CORS request; the broker may not support preflight.
-      response = await fetch(BROKER_URL, {
-        method: "POST",
-        body: JSON.stringify({ sealed: SEALED })
+      var response = await fetch("/api/chatToken", {
+        method: "POST", credentials: "same-origin", cache: "no-store", signal: controller.signal
       });
-    } catch {
-      showError("서버에 연결하지 못했습니다. 네트워크와 배포 주소를 확인해 주세요.");
-      connecting = false;
-      return;
-    }
-    if (!response.ok) {
-      showError("서버가 연결 요청을 처리하지 못했습니다 (HTTP " + response.status + ").");
-      connecting = false;
-      return;
-    }
-
-    let data;
-    try {
-      data = await response.json();
-    } catch {
-      showError("서버 응답을 읽을 수 없습니다. 잠시 후 다시 시도해 주세요.");
-      connecting = false;
-      return;
-    }
-    if (!data || typeof data.token !== "string" || !data.token.trim()) {
-      showError("서버에서 연결 토큰을 받지 못했습니다. 암호와 배포 주소를 확인해 주세요.");
-      connecting = false;
-      return;
-    }
-
-    try {
-      const directLine = WebChat.createDirectLine({ token: data.token });
-      status.hidden = true;
-      connectionLabel.textContent = "에이전트 연결됨";
-      document.querySelector(".connection-chip").classList.remove("offline");
-      directLine.postActivity({
-        type: "event", name: "startConversation", from: { id: "user" }
-      }).subscribe({
-        error: () => showError("첫 인사를 요청하지 못했습니다. 채팅창에 메시지를 입력해 주세요.", false)
+      if (current !== generation) return;
+      if (!response.ok) {
+        var messages = {
+          401: "서버 로그인이 필요합니다. 배포 사이트의 로그인 상태를 확인해 주세요.",
+          403: "이 사이트에서 채팅 연결을 요청할 수 없습니다.",
+          404: "토큰 서버가 배포되지 않았습니다. 서버 설정 안내를 확인해 주세요.",
+          429: "연결 요청이 많습니다. 잠시 후 다시 시도해 주세요.",
+          503: "토큰 서버의 인증 환경변수 또는 배포 설정이 필요합니다."
+        };
+        show(messages[response.status] || "연결 요청 실패 (HTTP " + response.status + "). 다시 시도해 주세요.", 4, true);
+        return;
+      }
+      var data = await response.json();
+      if (current !== generation) return;
+      if (!data || typeof data.token !== "string" || !data.token.trim()) {
+        show("서버가 유효한 연결 토큰을 반환하지 않았습니다.", 4, true);
+        return;
+      }
+      var context = P.conversations.active() || P.conversations.create(P.data.active().id);
+      store = P.createStore(context);
+      directLine = root.WebChat.createDirectLine({ token: data.token });
+      var line = directLine, greeted = false;
+      root.WebChat.renderWebChat({
+        directLine: line, store: store, locale: "ko-KR",
+        styleOptions: {
+          backgroundColor: "#111827", bubbleBackground: "#1d293b", bubbleTextColor: "#e5edf8",
+          bubbleFromUserBackground: "#234c83", bubbleFromUserTextColor: "#ffffff",
+          sendBoxBackground: "#172235", sendBoxTextColor: "#e5edf8",
+          sendBoxButtonColor: "#9cb3d3", suggestedActionBackgroundColor: "#1d293b",
+          suggestedActionTextColor: "#e5edf8", hideUploadButton: true,
+          primaryFont: '"Segoe UI", "Malgun Gothic", sans-serif'
+        }
+      }, document.getElementById("webchat"));
+      subscription = line.connectionStatus$.subscribe(function (state) {
+        if (current !== generation) return;
+        var descriptions = [
+          "연결을 준비하고 있습니다.", "연결 중입니다. 잠시 기다려 주세요.", "",
+          "연결 토큰이 만료되었습니다. 다시 연결하면 새 대화가 시작됩니다.",
+          "에이전트 연결에 실패했습니다. 다시 연결하면 새 대화가 시작됩니다.",
+          "연결이 종료되었습니다. 다시 연결하면 새 대화가 시작됩니다."
+        ];
+        show(descriptions[state] || "", state, state >= 3);
+        if (state === 2 && !greeted) {
+          greeted = true;
+          line.postActivity({ type: "event", name: "startConversation", from: { id: "user" } }).subscribe({
+            error: function () {
+              if (current !== generation) return;
+              status.hidden = false;
+              statusText.textContent = "첫 인사 요청에 실패했습니다. 메시지를 직접 입력해 주세요.";
+            }
+          });
+        }
       });
-      const store = root.PanelLab.createStore();
-      WebChat.renderWebChat({ directLine, locale: "ko-KR", store }, document.getElementById("webchat"));
-      rendered = true;
-    } catch {
-      showError("채팅을 시작하지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+    } catch (error) {
+      if (current !== generation) return;
+      show(error.name === "AbortError" ? "연결 요청 시간이 초과되었습니다. 다시 시도해 주세요." :
+        "서버 응답을 처리하지 못했습니다. 네트워크와 서버 설정을 확인해 주세요.", 4, true);
     } finally {
-      connecting = false;
+      clearTimeout(timeout);
     }
   }
 
-  retryButton.addEventListener("click", connect);
-  root.PanelLab = root.PanelLab || {};
-  root.PanelLab.connect = connect;
+  retry.addEventListener("click", function () {
+    if (P.conversations.active()) P.conversations.create(P.data.active().id);
+    connect();
+  });
+  P.connect = connect;
+  P.disconnect = stop;
+  P.sendRequest = function (text) {
+    if (!ready || !store) return false;
+    store.dispatch({ type: "WEB_CHAT/SEND_MESSAGE", payload: { text: text } });
+    return true;
+  };
 })(window);
