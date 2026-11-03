@@ -10,7 +10,7 @@
 </head>
 <body>
   <a class="skip" href="#workspace">작업 공간으로 건너뛰기</a>
-  <div id="app" class="app" data-view="chat" data-results="closed">
+  <div id="app" class="app" data-view="chat" data-results="closed" data-connection="loading">
     <aside class="nav" aria-label="주 메뉴">
       <a class="brand" href="./" aria-label="PanelLab 홈"><span class="logo">PL</span><span>PanelLab<small>ENGINEERING WORKSPACE</small></span></a>
       <button id="newConversation" class="btn primary new-chat" type="button"><span aria-hidden="true">+</span> 새 대화</button>
@@ -49,20 +49,31 @@
         <button id="retryConnect" class="btn sm" type="button" hidden>새 대화로 재연결</button>
       </div>
       <section id="welcome" class="welcome" aria-label="시작 안내">
-        <div class="welcome-mark" aria-hidden="true">PL</div>
-        <div class="eyebrow">YOUR ENGINEERING COPILOT</div>
-        <h2>설계부터 검토까지,<br>대화로 시작하세요.</h2>
-        <p>기존 통합운영 에이전트에 요구사항을 전달하세요.<br>코드와 분석 결과는 필요한 순간에 옆에서 확인합니다.</p>
+        <div class="welcome-intro"><div class="welcome-mark" aria-hidden="true">PL</div>
+          <div><div class="eyebrow">YOUR ENGINEERING COPILOT</div><h2>PLC 엔지니어링, 대화로 시작하세요.</h2>
+          <p>기존 통합운영 에이전트에 조건과 코드를 전달하세요. 결과는 필요할 때 펼쳐집니다.</p></div>
+        </div>
         <div class="quick-actions">
           <button data-task="draw" type="button"><strong>PLC 작화</strong><span>동작 조건으로 래더 요청</span></button>
           <button data-task="check" type="button"><strong>오류 검사</strong><span>코드를 붙여넣고 검토 요청</span></button>
           <button data-task="fix" type="button"><strong>코드 수정</strong><span>원본을 보존하고 수정안 비교</span></button>
           <button data-task="code" type="button"><strong>PLC 코드 생성</strong><span>Mitsubishi · GX Works2 / 3</span></button>
         </div>
-        <div class="welcome-foot">CPU와 명령어 호환성은 확인 전까지 미정으로 유지합니다.</div>
       </section>
-      <div id="webchat" aria-label="기존 Copilot Studio 에이전트 채팅"></div>
-      <footer class="chat-foot"><span id="sendStatus" role="status" aria-live="polite">메시지는 기존 에이전트로 전송됩니다.</span><span>파일 첨부: 지원 확인 전 비활성화</span></footer>
+      <div class="chat-stage">
+        <div id="connectionScreen" class="connection-screen" role="region" aria-label="에이전트 연결 안내">
+          <div class="connection-symbol" aria-hidden="true"><span class="loading-ring"></span><span class="error-symbol">!</span></div>
+          <h2 id="connectionTitle">기존 에이전트에 연결하고 있습니다</h2>
+          <p id="connectionDetail">서버 토큰 발급 후 실제 Web Chat을 표시합니다.</p>
+          <div class="connection-actions"><button id="retryConnectionScreen" class="btn primary" type="button" hidden>연결 다시 시도</button><button id="connectionHelp" class="btn" type="button">설정 안내</button></div>
+          <p class="connection-caption">연결 전에는 AI 응답이나 대화를 생성하지 않습니다.</p>
+        </div>
+        <div id="webchat" aria-label="기존 Copilot Studio 에이전트 채팅" hidden></div>
+      </div>
+      <div id="offlineComposer" class="offline-composer">
+        <div class="composer-preview" aria-label="연결 전 입력 안내"><span>연결되면 이 위치에 실제 채팅 입력창이 표시됩니다.</span><button class="btn sm" type="button" disabled>전송</button></div>
+      </div>
+      <footer class="chat-foot"><span id="sendStatus" role="status" aria-live="polite">연결 대기 · 메시지를 전송하지 않았습니다.</span><span>첨부 미확인 · CPU·명령어 호환성 별도 검증</span></footer>
     </main>
 
     <section id="resultsPanel" class="results" aria-label="PLC 작업 결과" hidden>

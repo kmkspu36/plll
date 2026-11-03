@@ -1,15 +1,26 @@
 (function (root) {
   "use strict";
   var P = root.PanelLab = root.PanelLab || {};
-  var directLine, subscription, controller, store, generation = 0, ready = false;
+  var directLine, subscription, controller, store, generation = 0, ready = false, connectTimeout;
   var status = document.getElementById("status");
   var statusText = document.getElementById("statusText");
   var retry = document.getElementById("retryConnect");
   var labels = ["연결 준비", "연결 중", "연결됨", "토큰 만료", "연결 실패", "연결 종료"];
 
-  function show(message, state, retryable) {
+  function show(message, state, retryable, phase) {
     ready = state === 2;
-    document.getElementById("webchat").inert = !ready;
+    var chat = document.getElementById("webchat");
+    var loading = state === 0 || state === 1;
+    document.getElementById("app").dataset.connection = ready ? "ready" : loading ? "loading" : "error";
+    chat.inert = !ready;
+    chat.hidden = !directLine;
+    document.getElementById("connectionScreen").hidden = ready;
+    document.getElementById("offlineComposer").hidden = !!directLine;
+    document.getElementById("connectionTitle").textContent = ready ? "에이전트 연결 완료" :
+      loading ? (phase || "기존 에이전트에 연결하고 있습니다") : "채팅 연결을 완료하지 못했습니다";
+    document.getElementById("connectionDetail").textContent = message;
+    document.getElementById("retryConnectionScreen").hidden = !retryable;
+    if (ready || state >= 3) clearTimeout(connectTimeout);
     status.hidden = ready;
     statusText.textContent = message;
     document.getElementById("connectionLabel").textContent = labels[state] || "연결 확인 중";
@@ -17,6 +28,11 @@
     retry.hidden = !retryable;
     retry.disabled = false;
     P.connected = ready;
+    P.connectionMessage = message;
+    if (!ready) {
+      document.getElementById("sendStatus").textContent = loading ? "연결 중 · 아직 전송할 수 없습니다." : "연결되지 않음 · 전송 불가";
+      document.getElementById("sendStatus").dataset.state = "idle";
+    }
     root.dispatchEvent(new CustomEvent("panellab:connection"));
   }
 
@@ -24,6 +40,7 @@
     generation++;
     ready = false;
     P.connected = false;
+    clearTimeout(connectTimeout);
     if (controller) controller.abort();
     if (subscription) subscription.unsubscribe();
     if (directLine) directLine.end();
@@ -33,7 +50,7 @@
   async function connect() {
     stop();
     var current = generation;
-    show("기존 통합운영 에이전트에 연결하는 중입니다...", 1, false);
+    show("서버 측 설정과 단기 토큰 발급을 확인하고 있습니다.", 1, false, "토큰 서버에 연결하고 있습니다");
     if (!root.WebChat || typeof root.WebChat.createStore !== "function" ||
         typeof root.WebChat.createDirectLine !== "function" || typeof root.WebChat.renderWebChat !== "function") {
       show("채팅 구성 요소를 불러오지 못했습니다. 네트워크를 확인하고 다시 시도해 주세요.", 4, true);
@@ -95,6 +112,9 @@
       store = P.createStore(context);
       directLine = root.WebChat.createDirectLine({ token: data.token });
       var line = directLine, greeted = false;
+      connectTimeout = setTimeout(function () {
+        if (current === generation && !ready) show("토큰 발급 후 Direct Line 연결 시간이 초과되었습니다. 네트워크와 채널 설정을 확인해 주세요.", 4, true);
+      }, 30000);
       root.WebChat.renderWebChat({
         directLine: line, store: store, locale: "ko-KR",
         styleOptions: {
@@ -103,6 +123,12 @@
           sendBoxBackground: "#172235", sendBoxTextColor: "#e5edf8",
           sendBoxButtonColor: "#9cb3d3", suggestedActionBackgroundColor: "#1d293b",
           suggestedActionTextColor: "#e5edf8", hideUploadButton: true,
+          fontSizeSmall: "12px", bubbleMaxWidth: 840,
+          bubbleBorderRadius: 12, bubbleFromUserBorderRadius: 12,
+          bubbleNubSize: 0, bubbleFromUserNubSize: 0,
+          paddingRegular: 14,
+          sendBoxHeight: 60, sendBoxBorderTop: "1px solid #2a384d",
+          sendBoxPlaceholderColor: "#98acc8",
           primaryFont: '"Segoe UI", "Malgun Gothic", sans-serif'
         }
       }, document.getElementById("webchat"));
@@ -115,6 +141,10 @@
           "연결이 종료되었습니다. 다시 연결하면 새 대화가 시작됩니다."
         ];
         show(descriptions[state] || "", state, state >= 3);
+        if (state === 2) {
+          document.getElementById("sendStatus").textContent = "연결됨 · 기존 에이전트에 메시지를 입력하세요.";
+          document.getElementById("sendStatus").dataset.state = "idle";
+        }
         if (state === 2 && !greeted) {
           greeted = true;
           line.postActivity({ type: "event", name: "startConversation", from: { id: "user" } }).subscribe({
@@ -135,10 +165,15 @@
     }
   }
 
-  retry.addEventListener("click", function () {
+  function retryConnection() {
+    var context = P.conversations.active();
+    if (context && context.activities && context.activities.length &&
+        !root.confirm("새 서버 대화로 다시 연결합니다. 현재 대화는 읽기 전용 기록으로 보존됩니다. 계속할까요?")) return;
     if (P.conversations.active()) P.conversations.create(P.data.active().id);
     connect();
-  });
+  }
+  retry.addEventListener("click", retryConnection);
+  document.getElementById("retryConnectionScreen").addEventListener("click", retryConnection);
   P.connect = connect;
   P.disconnect = stop;
   P.sendRequest = function (text) {

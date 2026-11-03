@@ -26,6 +26,12 @@
   }
 
   P.createStore = function (context) {
+    var pending = new Map(), responseVersion = 0;
+    function sendState(message, state) {
+      root.dispatchEvent(new CustomEvent("panellab:send", {
+        detail: { message: message, state: state, conversationId: context.id }
+      }));
+    }
     return WebChat.createStore({}, function () {
       return function (next) {
         return function (action) {
@@ -39,16 +45,29 @@
             if (window.console) console.warn("PanelLab observer error", e);
             root.dispatchEvent(new CustomEvent("panellab:error", { detail: "응답의 보조 표시 또는 저장에 실패했습니다. 채팅 원문을 확인해 주세요." }));
           }
-          if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_PENDING") {
-            root.dispatchEvent(new CustomEvent("panellab:send", { detail: "메시지 전송 중" }));
-          } else if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_FULFILLED") {
-            root.dispatchEvent(new CustomEvent("panellab:send", { detail: "메시지 전송됨 · 에이전트 응답 대기" }));
-          } else if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_REJECTED") {
-            root.dispatchEvent(new CustomEvent("panellab:send", { detail: "메시지 전송 실패 · 채팅에서 재시도해 주세요." }));
-          } else if (action && action.type === "DIRECT_LINE/INCOMING_ACTIVITY" &&
-                     action.payload && action.payload.activity && action.payload.activity.from &&
-                     action.payload.activity.from.role === "bot") {
-            root.dispatchEvent(new CustomEvent("panellab:send", { detail: "에이전트 응답 수신" }));
+          var activity = action && action.payload && action.payload.activity;
+          var clientId = action && action.meta && action.meta.clientActivityID;
+          if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_PENDING" && activity && activity.type === "message") {
+            pending.set(clientId, responseVersion);
+            sendState("메시지 전송 중", "sending");
+          } else if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_FULFILLED" && activity && activity.type === "message") {
+            var version = pending.get(clientId);
+            pending.delete(clientId);
+            sendState(version !== undefined && version !== responseVersion ? "에이전트 응답 수신" : "메시지 전송됨 · 에이전트 응답 대기",
+              version !== undefined && version !== responseVersion ? "received" : "waiting");
+          } else if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_REJECTED" && pending.has(clientId)) {
+            pending.delete(clientId);
+            sendState("메시지 전송 실패 · 채팅에서 재시도해 주세요.", "failed");
+          } else if (action && action.type === "DIRECT_LINE/POST_ACTIVITY_IMPEDED" && pending.has(clientId)) {
+            sendState("메시지 전송이 지연되고 있습니다. 채팅의 전송 상태를 확인해 주세요.", "sending");
+          } else if (action && action.type === "DIRECT_LINE/INCOMING_ACTIVITY" && activity &&
+                     activity.from && activity.from.role === "bot") {
+            if (activity.type === "message") {
+              responseVersion++;
+              sendState("에이전트 응답 수신", "received");
+            } else if (activity.type === "typing") {
+              sendState("에이전트가 응답을 작성하고 있습니다.", "waiting");
+            }
           }
           return next(action);
         };

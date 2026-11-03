@@ -9,7 +9,7 @@ function setup(fetchResponse) {
   const elements = new Map(), lines = [], requests = [], dispatched = [];
   function element(id) {
     if (!elements.has(id)) elements.set(id, {
-      hidden: false, disabled: false, textContent: "", classList: { toggle() {} },
+      hidden: false, disabled: false, textContent: "", dataset: {}, classList: { toggle() {} },
       addEventListener(name, callback) { this[name] = callback; }
     });
     return elements.get(id);
@@ -61,6 +61,8 @@ test("connection only becomes ready on Online and greets once", async () => {
   f.lines[0].emit(2);
   f.lines[0].emit(2);
   assert.equal(f.P.connected, true);
+  assert.equal(f.element("app").dataset.connection, "ready");
+  assert.equal(f.element("connectionScreen").hidden, true);
   assert.equal(f.lines[0].greetings, 1);
   assert.equal(f.P.sendRequest("request"), true);
   assert.equal(f.dispatched[0].payload.text, "request");
@@ -71,6 +73,8 @@ test("connection only becomes ready on Online and greets once", async () => {
 test("terminal status permits a clean new connection", async () => {
   const f = setup();
   await f.P.connect(); f.lines[0].emit(3);
+  assert.equal(f.element("app").dataset.connection, "error");
+  assert.equal(f.element("connectionScreen").hidden, false);
   assert.equal(f.element("retryConnect").hidden, false);
   assert.equal(f.P.connected, false);
   await f.P.connect();
@@ -130,4 +134,14 @@ test("GitHub Pages is explicitly identified as unsupported server hosting", asyn
   await f.P.connect();
   assert.match(f.element("statusText").textContent, /GitHub Pages/);
   assert.equal(f.requests.length, 0);
+});
+test("connection screen mirrors diagnostic and retry state", async () => {
+  const f = setup(async () => ({
+    ok: false, status: 502, json: async () => ({ code: "BROKER_REJECTED", upstreamStatus: 401 })
+  }));
+  await f.P.connect();
+  assert.match(f.element("connectionDetail").textContent, /Broker HTTP 401/);
+  assert.equal(f.element("retryConnectionScreen").hidden, false);
+  assert.equal(f.element("webchat").hidden, true);
+  assert.equal(f.element("offlineComposer").hidden, false);
 });

@@ -187,6 +187,7 @@
     var actions = el("span", "card-a");
     h.appendChild(actions);
     c.appendChild(h);
+    c.appendChild(note("응답 형식의 자동 분류는 실제 에이전트에서 미검증 상태입니다. AI 원본 응답과 함께 확인하세요."));
     extra(c, actions);
     var save = el("button", "btn sm", "파일 저장"); save.type = "button";
     save.onclick = function () {
@@ -464,6 +465,8 @@
         "이전에 공개된 Broker 인증값은 서버 소유자가 폐기·교체해야 합니다. 저장소에서 제거하는 것만으로 무효화되지 않습니다.",
         DISCLAIMER
       ].forEach(function (t) { b.appendChild(el("p", null, t)); });
+      if (P.connectionMessage) b.appendChild(note("현재 연결 진단: " + P.connectionMessage));
+      b.appendChild(note("GitHub Pages는 토큰 서버를 실행하지 못합니다. 로컬 실행: npm run dev --prefix .\\api. 인증값은 api\\local.settings.json 또는 서버 환경에서만 관리하세요."));
       var login = el("a", "doc", "배포 사이트 로그인");
       login.href = "/.auth/login/github";
       b.appendChild(note("아래 링크는 Azure Static Web Apps의 GitHub 로그인이 구성된 배포에서 사용합니다. 호스팅 공급자 설정은 별도로 필요합니다."));
@@ -505,7 +508,14 @@
   };
   document.getElementById("dismissNotice").onclick = function () { document.getElementById("notice").hidden = true; };
   root.addEventListener("panellab:error", function (event) { notify(event.detail); });
-  root.addEventListener("panellab:send", function (event) { document.getElementById("sendStatus").textContent = event.detail; });
+  root.addEventListener("panellab:send", function (event) {
+    var current = P.conversations.active(), detail = event.detail;
+    if (!current || detail.conversationId !== current.id || !P.connected) return;
+    var status = document.getElementById("sendStatus");
+    status.textContent = detail.message;
+    status.dataset.state = detail.state;
+  });
+  document.getElementById("connectionHelp").onclick = settingsDialog;
   root.addEventListener("panellab:result", function (event) {
     if (event.detail.projectId === D.active().id) {
       setResults(true);
@@ -563,7 +573,9 @@
       list.appendChild(all);
     }
     var current = P.conversations.active();
-    document.getElementById("welcome").hidden = !!(current && current.activities.length);
+    document.getElementById("welcome").hidden = !!(current && current.activities.some(function (entry) {
+      return entry.direction === "outgoing" && entry.activity.type === "message";
+    }));
   }
   root.addEventListener("panellab:conversations", renderConversations);
   function newConversation() {

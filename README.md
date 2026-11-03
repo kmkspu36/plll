@@ -93,6 +93,15 @@ No live broker credential is needed for unit tests.
 
 - The dark, Korean chat workspace keeps results closed until requested or detected.
   At mobile widths, chat, menu and results each use the full screen.
+- Connection loading/error screens occupy the chat stage rather than leaving an
+  empty Web Chat container. Only an actual token and Direct Line connection reveal
+  the real conversation. The offline bottom bar is labelled as an unavailable
+  input location, not a working chat composer. Web Chat owns the online composer.
+- A compact welcome area remains through the agent greeting and closes after the
+  first user message. The chat transcript takes the remaining height; its input
+  stays at the bottom. Tablet widths retain the workspace/sidebar above 720px.
+- Sending, acknowledgement, failure and typing indicators observe Web Chat 4.18.0
+  action payloads. They do not simulate an agent response or completion time.
 - Quick actions send ordinary requests to the same agent, including the selected
   GX Works version and CPU (unspecified by default). They are disabled offline.
 - New conversations and reconnects start a new Direct Line session. Recent
@@ -119,7 +128,13 @@ No live broker credential is needed for unit tests.
 Unit tests use isolated fixtures, not a live agent or production credentials.
 They cover response parsing, raw archives, project ownership, approval, bounded
 diffs, safe ladder fallback, connection transitions and token-server failures.
-Local responsive checks cover 1440px, 1024px and 390px layouts with an explicitly
-unconfigured token server. Real token issuance, agent responses, expiration/
+Local responsive checks cover 1440px, 1024px, 819px, 720px, 390px and 360px layouts
+and short mobile heights against the real, unconfigured token handler. Real token issuance, agent responses, expiration/
 reconnection on the service, file handling and GX Works compatibility still
 require an authenticated deployment and the existing broker owner's verification.
+
+The publicly reachable existing Broker returned HTTP 405 for GET, HTTP 204 for
+OPTIONS, and HTTP 400 with an error object for an empty POST during diagnosis.
+The browser could read that empty-request error response via CORS. These results
+only establish route reachability and missing-credential handling, **not** valid
+SEALED authentication, successful token generation or agent availability.
