@@ -60,13 +60,13 @@
     }
     controller = new AbortController();
     var requestController = controller;
-    var timeout = setTimeout(function () { requestController.abort(); }, 20000);
+    var timeout = setTimeout(function () { requestController.abort(); }, P.requestHostedToken ? 180000 : 20000);
     try {
-      if (root.location && root.location.hostname.endsWith(".github.io")) {
+      if (!P.requestHostedToken && root.location && root.location.hostname.endsWith(".github.io")) {
         show("현재 호스팅은 GitHub Pages입니다. Pages는 서버 토큰 중계를 실행할 수 없습니다. 기존 Broker를 안전하게 연결할 서버 배포가 필요합니다.", 4, false);
         return;
       }
-      var response = await fetch("/api/chatToken", {
+      var response = P.requestHostedToken ? await P.requestHostedToken(requestController.signal) : await fetch("/api/chatToken", {
         method: "POST", credentials: "same-origin", cache: "no-store", signal: requestController.signal
       });
       if (current !== generation) return;
@@ -166,7 +166,7 @@
       });
     } catch (error) {
       if (current !== generation) return;
-      show(error.name === "AbortError" ? "연결 요청 시간이 초과되었습니다. 다시 시도해 주세요." :
+      show(error.name === "HostedLoginError" ? error.message : error.name === "AbortError" ? "연결 요청 시간이 초과되었습니다. 다시 시도해 주세요." :
         "서버 응답을 처리하지 못했습니다. 네트워크와 서버 설정을 확인해 주세요.", 4, true);
     } finally {
       clearTimeout(timeout);

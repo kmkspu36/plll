@@ -5,3 +5,5 @@ api/local.settings.json
 !.env.example
 playwright-report/
 test-results/
+.netlify-public/
+.netlify/

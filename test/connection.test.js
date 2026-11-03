@@ -145,6 +145,17 @@ test("GitHub Pages is explicitly identified as unsupported server hosting", asyn
   assert.match(f.element("statusText").textContent, /GitHub Pages/);
   assert.equal(f.requests.length, 0);
 });
+test("GitHub Pages uses hosted login when configured, without an anonymous token fetch", async () => {
+  const f = setup();
+  f.root.location = { hostname: "kmkspu36.github.io" };
+  f.P.requestHostedToken = async () => ({ ok: true, json: async () => ({ token: "hosted-test" }) });
+  await f.P.connect();
+  assert.equal(f.requests.length, 0);
+  assert.equal(f.lines.length, 1);
+  f.lines[0].emit(2);
+  assert.equal(f.P.connected, true);
+  f.P.disconnect();
+});
 test("connection screen mirrors diagnostic and retry state", async () => {
   const f = setup(async () => ({
     ok: false, status: 502, json: async () => ({ code: "BROKER_REJECTED", upstreamStatus: 401 })

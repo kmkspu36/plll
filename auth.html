@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>PanelLab — 채팅 로그인</title>
+  <link rel="stylesheet" href="css/panellab.css?v=workspace-3">
+</head>
+<body>
+  <main class="card" style="max-width:560px;margin:48px auto;padding:24px">
+    <h1>PanelLab 채팅 로그인</h1>
+    <p>초대받은 계정으로 로그인하세요. 비밀번호는 Netlify Identity에서 처리하며 기존 PLC 에이전트는 변경하지 않습니다.</p>
+    <p id="authStatus" role="status" aria-live="polite">로그인 구성 요소를 불러오는 중입니다.</p>
+    <button id="authLogin" class="btn primary" type="button" disabled>로그인 / 초대 수락</button>
+    <button id="authConnect" class="btn primary" type="button" hidden>이 계정으로 채팅 연결</button>
+    <button id="authLogout" class="btn" type="button" hidden>로그아웃</button>
+  </main>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" defer></script>
+  <script src="js/netlify-auth.js?v=netlify-1" defer></script>
+</body>
+</html>

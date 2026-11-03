@@ -17,7 +17,67 @@ correction, verification and reporting as ordinary requests to **AGENT 01 only**
 The owner's internal AGENT 02–08 connections are neither configured nor changed
 by this website. The existing Direct Line/Broker/authentication flow is unchanged;
 Web Chat's presentation options use the same light workspace palette.
-No additional API or paid library is introduced.
+The optional Netlify deployment below adds a login-verified token adapter; it
+does not add another AI or change the upstream Broker.
+
+## GitHub Pages with a separate Netlify token server
+
+The public workspace stays at `https://kmkspu36.github.io/plll/`.
+`js/token-client.js` opens a user-initiated login window at
+`https://superb-fudge-1fb499.netlify.app/auth.html`. Netlify Identity handles
+invitation acceptance and login using its official widget. The token function
+verifies the bearer token against this site's fixed Identity `/user` endpoint
+and requires a confirmed user before calling the existing Broker adapter.
+The incoming Azure principal header is ignored; only a server-verified Identity
+user is translated to the internal adapter's authenticated principal.
+
+Keep Identity **invite only**, email confirmation required. All confirmed
+invited users can request chat tokens; do not invite accounts that should not
+have agent access. No open signup, anonymous token vending, arbitrary issuer,
+wildcard CORS, or caller-supplied principal is used. Site-wide Netlify password
+protection must not block the public login page or function.
+
+The login window sends **only the short-lived Direct Line response**, never the
+Identity JWT/password or SEALED, to its verified opener. The workspace checks
+the exact sender origin, popup window and random per-request state. Tokens are
+not placed in URLs or stored by the workspace. Identity session storage stays
+on the Netlify origin; third-party cookies are not required. No cross-origin
+API request is needed, so this design deliberately does not enable CORS.
+Allow popups and press **다시 연결**, sign in, then **이 계정으로 채팅 연결**.
+Login expires after three minutes; retries start a new agent conversation.
+The initial automatic connection shows a login prompt rather than opening a
+blocked popup. Existing loopback and Azure same-origin API behavior is retained.
+
+Netlify reads `netlify.toml`: install API dependencies, build an explicit public
+allowlist into `.netlify-public`, and bundle `netlify/functions/chat-token.js`.
+Do not override publish directory to the repository root. API sources,
+credentials and local settings must not be published as static assets.
+
+In the Netlify project, set these **server Function environment variables**
+for production, mark SEALED as secret, then trigger a new production deploy:
+
+| Variable | Value |
+|---|---|
+| `PANEL_BROKER_URL` | Existing owner's HTTPS Direct Line Broker endpoint |
+| `PANEL_BROKER_SEALED` | Owner's operational credential, entered privately in Netlify only |
+| `PANEL_ALLOWED_ORIGIN` | `https://superb-fudge-1fb499.netlify.app` |
+| `PANEL_BROKER_ORIGIN` | `https://kmkspu36.github.io` |
+
+`PANEL_ALLOWED_ORIGIN` is the login window's actual request origin, not Pages.
+`PANEL_BROKER_ORIGIN` preserves the previously verified upstream Origin.
+Image upload remains disabled unless separately verified and explicitly configured.
+Reissue credentials previously shared in chat before production use.
+Never put SEALED in GitHub variables, HTML, browser JS or screenshots.
+
+Invitation emails normally return to the Netlify root. The root detects known
+Identity callback hashes and immediately redirects to `auth.html` to let the
+official widget complete them. Invitation URLs and their fragments are secrets;
+do not send them to support or paste them into the workspace chat.
+
+Netlify Free/Identity availability does not guarantee unlimited usage. Review
+current account credits and limits; no paid upgrade is configured by this code.
+Public end-to-end chat is not verified until the owner sets the server variables,
+accepts their invitation and completes an actual agent round trip on Pages.
 
 Project descriptions, user status, creation/last-activity dates and stage request
 records are additive to existing storage. Work history is rebuilt from preserved
