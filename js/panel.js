@@ -16,6 +16,7 @@
   var DISCLAIMER = "기존 에이전트의 응답을 표시한 결과입니다. GX Works 컴파일 및 실제 PLC 검증을 대체하지 않습니다.";
 
   var tab = "all";
+  var startedConversations = new Set();
   var body = document.getElementById("resultBody");
   var tabsEl = document.getElementById("resultTabs");
 
@@ -443,6 +444,23 @@
 
   /* ---------- navigation / dialogs ---------- */
   var app = document.getElementById("app");
+  function updateViewport() {
+    var viewport = root.visualViewport;
+    if (viewport && viewport.scale !== 1) return;
+    if (viewport && root.innerWidth <= 720) {
+      app.style.setProperty("--workspace-height", viewport.height + "px");
+      app.style.setProperty("--workspace-top", viewport.offsetTop + "px");
+    } else {
+      app.style.removeProperty("--workspace-height");
+      app.style.removeProperty("--workspace-top");
+    }
+  }
+  root.addEventListener("resize", updateViewport);
+  if (root.visualViewport) {
+    root.visualViewport.addEventListener("resize", updateViewport);
+    root.visualViewport.addEventListener("scroll", updateViewport);
+  }
+  updateViewport();
   function setView(v) {
     if (v === "results") setResults(true);
     app.dataset.view = v;
@@ -581,7 +599,12 @@
   root.addEventListener("panellab:error", function (event) { notify(event.detail); });
   root.addEventListener("panellab:send", function (event) {
     var current = P.conversations.active(), detail = event.detail;
-    if (!current || detail.conversationId !== current.id || !P.connected) return;
+    if (!current || detail.conversationId !== current.id || current.projectId !== D.active().id) return;
+    if (detail.state === "sending") {
+      startedConversations.add(current.id);
+      document.getElementById("welcome").hidden = true;
+    }
+    if (!P.connected) return;
     var status = document.getElementById("sendStatus");
     status.textContent = detail.message;
     status.dataset.state = detail.state;
@@ -697,9 +720,11 @@
       list.appendChild(all);
     }
     var current = P.conversations.active();
-    document.getElementById("welcome").hidden = !!(current && current.activities.some(function (entry) {
+    var started = !!(current && (startedConversations.has(current.id) || current.activities.some(function (entry) {
       return entry.direction === "outgoing" && entry.activity.type === "message";
-    }));
+    })));
+    if (started) startedConversations.add(current.id);
+    document.getElementById("welcome").hidden = started;
   }
   root.addEventListener("panellab:conversations", renderConversations);
   function newConversation() {

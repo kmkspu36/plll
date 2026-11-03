@@ -19,9 +19,10 @@
   }
 
   function handleOutgoing(activity, context) {
-    if (activity && activity.type === "message" && typeof activity.text === "string" && activity.text) {
+    if (activity && activity.type === "message" &&
+        ((typeof activity.text === "string" && activity.text) || (Array.isArray(activity.attachments) && activity.attachments.length))) {
       P.conversations.record(context, activity, "outgoing");
-      P.data.addHistory({ kind: "user", text: activity.text.slice(0, 200) }, context);
+      P.data.addHistory({ kind: "user", text: activity.text ? activity.text.slice(0, 200) : "이미지 첨부 요청" }, context);
     }
   }
 

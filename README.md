@@ -136,8 +136,14 @@ No live broker credential is needed for unit tests.
   the real conversation. The offline bottom bar is labelled as an unavailable
   input location, not a working chat composer. Web Chat owns the online composer.
 - A compact welcome area remains through the agent greeting and closes after the
-  first user message. The chat transcript takes the remaining height; its input
-  stays at the bottom. Tablet widths retain the workspace/sidebar above 720px.
+  first user message starts sending, including attachment-only messages. It stays
+  closed through responses and send failures until a new conversation is started.
+  The bounded Web Chat root and transcript take the remaining height; only the
+  transcript scrolls, with Web Chat's own sticky-to-bottom behavior preserved.
+  Its native input stays above the image toolbar. No per-message forced scroll
+  overrides a user reading older messages. Tablet widths retain the sidebar above
+  720px. On mobile, the visible viewport height/offset tracks keyboard resizing;
+  pinch zoom is not overridden. Physical-device keyboard testing is still needed.
 - Sending, acknowledgement, failure and typing indicators observe Web Chat 4.18.0
   action payloads. They do not simulate an agent response or completion time.
 - Quick actions send ordinary requests to the same agent, including the selected
@@ -179,6 +185,15 @@ Local responsive checks cover 1440px, 1024px, 819px, 720px, 390px and 360px layo
 and short mobile heights against the real, unconfigured token handler. Real token issuance, agent responses, expiration/
 reconnection on the service, file handling and GX Works compatibility still
 require an authenticated deployment and the existing broker owner's verification.
+
+The chat-layout check also used the actual Web Chat 4.18 renderer in an isolated
+browser frame with a test-only, offline transport and temporary in-memory
+metadata. With 35 labelled user entries, document height stayed within the
+viewport, the native transcript scrolled, the composer stayed above attachments,
+sticky scrolling followed the bottom and retained an older reading position.
+Welcome transitions, 360–1440px layouts and simulated visual-viewport resizing
+were checked without contacting an agent or creating AI responses. These are
+renderer checks, not successful live conversations or physical keyboard tests.
 
 The publicly reachable existing Broker returned HTTP 405 for GET, HTTP 204 for
 OPTIONS, and HTTP 400 with an error object for an empty POST during diagnosis.

@@ -137,3 +137,19 @@ test("native send-box attachments cannot bypass unverified upload gate", () => {
   dispatch(action);
   assert.equal(forwarded, 1);
 });
+test("attachment-only post is archived as a user message without requiring text", () => {
+  const f = setup(), c = f.P.conversations.create(f.P.data.active().id);
+  let dispatch;
+  f.sandbox.WebChat = { createStore: (_, factory) => { dispatch = factory()((action) => action); } };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../js/store.js"), "utf8"), f.sandbox);
+  f.P.createStore(c);
+  const activity = { type: "message", attachments: [{ contentType: "image/png", contentUrl: "blob:local-test" }] };
+  const action = { type: "DIRECT_LINE/POST_ACTIVITY", payload: { activity } };
+  assert.equal(dispatch(action), action);
+  assert.equal(c.activities.length, 1);
+  assert.equal(c.activities[0].direction, "outgoing");
+  assert.equal(c.activities[0].activity.attachments[0].contentType, "image/png");
+  assert.match(f.P.data.historyFor(c.projectId)[0].text, /첨부/);
+  dispatch({ type: "DIRECT_LINE/POST_ACTIVITY", payload: { activity: { type: "event", name: "startConversation" } } });
+  assert.equal(c.activities.length, 1);
+});
