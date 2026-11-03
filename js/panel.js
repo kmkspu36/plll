@@ -459,9 +459,9 @@
       [
         "연결: 기존 Copilot Studio 통합운영 에이전트 1개 (Direct Line 토큰 broker 방식).",
         "서버가 기존 Broker의 인증값을 관리하고 브라우저에는 단기 토큰만 전달합니다. 서버 설정과 호스팅 로그인이 필요합니다.",
-        "프로젝트·결과·대화 원본은 이 브라우저(localStorage)에 저장됩니다. 다른 기기에 동기화되지 않습니다. 민감한 PLC 코드는 공유 기기에서 입력하지 마세요.",
+        "프로젝트·결과·대화 원본은 localStorage, 선택하여 보관한 이미지 원본은 IndexedDB에 저장됩니다. 모두 이 브라우저에만 있으며 다른 기기에 동기화되지 않습니다.",
         "최근 대화는 읽기 전용 기록입니다. 새 대화와 재연결은 새 서버 대화를 시작하며 이전 대화를 자동으로 재개하지 않습니다.",
-        "응답 분류 형식과 파일 업로드는 실제 에이전트에서 확인이 필요합니다. 업로드는 비활성화되어 있습니다.",
+        "이미지는 선택·미리보기·로컬 보관이 가능합니다. 기존 에이전트의 파일 입력을 운영자가 검증하고 서버에서 활성화하기 전에는 업로드할 수 없습니다. 일반 파일은 아직 미지원입니다.",
         "이전에 공개된 Broker 인증값은 서버 소유자가 폐기·교체해야 합니다. 저장소에서 제거하는 것만으로 무효화되지 않습니다.",
         DISCLAIMER
       ].forEach(function (t) { b.appendChild(el("p", null, t)); });
@@ -479,6 +479,18 @@
           "panellab-project.json", "application/json");
       };
       b.appendChild(el("p")).appendChild(exportAll);
+      var backup = el("button", "btn", "기존 데이터의 IndexedDB 백업 만들기"); backup.type = "button";
+      backup.onclick = async function () {
+        backup.disabled = true;
+        try {
+          var snapshot = await P.storage.backupLegacy();
+          backup.textContent = "백업 완료 · " + new Date(snapshot.createdAt).toLocaleTimeString("ko-KR");
+          download(JSON.stringify(snapshot, null, 2), "panellab-local-backup.json", "application/json");
+        } catch (error) { notify("백업 실패: " + error.message); }
+        finally { backup.disabled = false; }
+      };
+      b.appendChild(el("p")).appendChild(backup);
+      b.appendChild(note("백업은 기존 localStorage를 삭제하거나 대체하지 않습니다. 내보내기 JSON에 이미지 원본은 포함되지 않으므로 보관한 이미지에서 개별 저장하세요."));
     });
   }
 
@@ -516,6 +528,7 @@
     status.dataset.state = detail.state;
   });
   document.getElementById("connectionHelp").onclick = settingsDialog;
+  document.getElementById("savedImages").onclick = filesDialog;
   root.addEventListener("panellab:result", function (event) {
     if (event.detail.projectId === D.active().id) {
       setResults(true);
@@ -547,6 +560,46 @@
         item.appendChild(raw); container.appendChild(item);
       });
     });
+  }
+  function filesDialog() {
+    var projectId = D.active().id, previewUrls = [], disposed = false;
+    openDialog("보관한 이미지 · 현재 브라우저", function (container) {
+      container.appendChild(note("직접 보관한 원본 파일입니다. 로컬 보관 여부와 에이전트 전송·분석 여부는 서로 다릅니다."));
+      var list = el("div", "stored-images"); container.appendChild(list);
+      list.appendChild(el("p", "small", "파일 저장소를 읽고 있습니다..."));
+      P.storage.filesFor(projectId).then(function (records) {
+        if (disposed) return;
+        list.textContent = "";
+        if (!records.length) list.appendChild(el("p", "empty", "보관한 이미지가 없습니다. 이미지 첨부에서 로컬 보관을 선택하세요."));
+        records.slice().reverse().forEach(function (record) {
+          var c = el("article", "archive-item");
+          var img = el("img", "stored-image"); img.alt = record.name;
+          img.src = URL.createObjectURL(record.blob); previewUrls.push(img.src);
+          c.appendChild(img); c.appendChild(el("p", "fname", record.name + " · " + Math.ceil(record.blob.size / 1024) + "KB"));
+          c.appendChild(el("p", "small", "이 브라우저 원본 보관 · 전송·분석 상태는 대화에서 확인"));
+          var row = el("div", "row");
+          var save = el("button", "btn sm", "원본 파일 저장"); save.type = "button";
+          save.onclick = function () { download(record.blob, record.name, record.blob.type); };
+          var use = el("button", "btn sm", "이 이미지로 요청 준비"); use.type = "button";
+          use.onclick = async function () {
+            dlg.close();
+            try { await P.attachments.useSaved(record); }
+            catch (error) { notify(error.message); }
+          };
+          var remove = el("button", "btn sm danger", "보관 삭제"); remove.type = "button";
+          remove.onclick = async function () {
+            if (!confirm("이 브라우저에 보관한 이미지 원본을 삭제할까요? 이미 전송한 서버 첨부와 대화 기록은 삭제되지 않습니다.")) return;
+            remove.disabled = true;
+            try { await P.storage.removeFile(record.id); c.remove(); if (!list.children.length) list.appendChild(el("p", "empty", "보관한 이미지가 없습니다.")); }
+            catch (error) { notify(error.message); remove.disabled = false; }
+          };
+          row.appendChild(save); row.appendChild(use); row.appendChild(remove); c.appendChild(row); list.appendChild(c);
+        });
+      }).catch(function (error) { if (!disposed) { list.textContent = ""; list.appendChild(note(error.message)); } });
+    });
+    dlg.addEventListener("close", function () {
+      disposed = true; previewUrls.forEach(function (url) { URL.revokeObjectURL(url); });
+    }, { once: true });
   }
   function renderConversations() {
     var list = document.getElementById("recentConversations");
@@ -641,5 +694,6 @@
   setView("chat");
   render();
   renderConversations();
+  P.attachments.init();
   P.connect();
 })(window);

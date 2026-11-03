@@ -6,6 +6,9 @@
     "PANEL_BROKER_URL": "https://your-existing-broker.azurewebsites.net/api/directlineToken",
     "PANEL_BROKER_SEALED": "",
     "PANEL_ALLOWED_ORIGIN": "http://127.0.0.1:4173",
-    "PANEL_LOCAL_DEVELOPMENT": "0"
+    "PANEL_LOCAL_DEVELOPMENT": "0",
+    "PANEL_IMAGE_UPLOAD_VERIFIED": "0",
+    "PANEL_UPLOAD_MAX_FILES": "1",
+    "PANEL_UPLOAD_MAX_BYTES": "5242880"
   }
 }

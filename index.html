@@ -19,6 +19,7 @@
         <button data-nav="home" aria-current="page" type="button">AI 작업실</button>
         <button data-nav="project" type="button">프로젝트</button>
         <button data-nav="saved" type="button">저장된 결과</button>
+        <button id="savedImages" type="button">보관한 이미지</button>
       </nav>
       <div class="proj">
         <label for="projectSelect" class="small">현재 프로젝트</label>
@@ -59,6 +60,7 @@
           <button data-task="fix" type="button"><strong>코드 수정</strong><span>원본을 보존하고 수정안 비교</span></button>
           <button data-task="code" type="button"><strong>PLC 코드 생성</strong><span>Mitsubishi · GX Works2 / 3</span></button>
         </div>
+        <button id="welcomeAttachments" class="btn sm image-entry" type="button">도면·오류 화면 이미지 분석 준비</button>
       </section>
       <div class="chat-stage">
         <div id="connectionScreen" class="connection-screen" role="region" aria-label="에이전트 연결 안내">
@@ -73,7 +75,8 @@
       <div id="offlineComposer" class="offline-composer">
         <div class="composer-preview" aria-label="연결 전 입력 안내"><span>연결되면 이 위치에 실제 채팅 입력창이 표시됩니다.</span><button class="btn sm" type="button" disabled>전송</button></div>
       </div>
-      <footer class="chat-foot"><span id="sendStatus" role="status" aria-live="polite">연결 대기 · 메시지를 전송하지 않았습니다.</span><span>첨부 미확인 · CPU·명령어 호환성 별도 검증</span></footer>
+      <div class="attachment-toolbar"><button id="openAttachments" class="btn sm" type="button" aria-haspopup="dialog">이미지 첨부</button><button class="btn sm" type="button" disabled title="PDF·코드 파일은 기존 에이전트 지원 확인이 필요합니다.">파일 · 미확인</button><span>이미지 단독 또는 설명과 함께 요청 준비</span></div>
+      <footer class="chat-foot"><span id="sendStatus" role="status" aria-live="polite">연결 대기 · 메시지를 전송하지 않았습니다.</span><span id="uploadStatus">이미지: 로컬 준비 가능 · 서버 분석 미검증</span></footer>
     </main>
 
     <section id="resultsPanel" class="results" aria-label="PLC 작업 결과" hidden>
@@ -96,12 +99,28 @@
     <div class="dlg-h"><h3 id="dlgTitle"></h3><button id="dlgClose" class="btn sm" type="button">닫기</button></div>
     <div id="dlgBody"></div>
   </dialog>
+  <dialog id="attachmentDialog" aria-labelledby="attachmentTitle">
+    <div class="dlg-h"><h3 id="attachmentTitle">이미지 첨부 및 분석 요청</h3><button id="attachmentClose" class="btn sm" type="button">닫기</button></div>
+    <p id="attachmentCapability" class="note"></p>
+    <form id="attachmentForm" class="form">
+      <input id="attachmentPicker" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden>
+      <div class="row"><button id="attachmentChoose" class="btn" type="button">이미지 선택</button><button id="attachmentReplace" class="btn" type="button">이미지 교체</button><button class="btn" type="button" disabled title="PDF·코드 파일의 실제 에이전트 지원 확인이 필요합니다.">일반 파일 · 미지원</button></div>
+      <div id="attachmentPreviews" class="attachment-previews" aria-label="선택한 이미지"></div>
+      <label class="fld"><span>추가 설명 (선택)</span><textarea id="attachmentText" maxlength="4000" placeholder="예: 이 전기 도면을 분석하고 확인 가능한 I/O와 불확실한 항목을 정리해 주세요. 비우면 이미지 분석 요청을 함께 보냅니다."></textarea></label>
+      <label class="check-label"><input id="keepAttachments" type="checkbox"> 원본 이미지를 현재 프로젝트에 로컬 보관 (이 브라우저에만 저장)</label>
+      <div class="row"><button id="attachmentSave" class="btn" type="button">전송 없이 로컬 보관</button><button id="attachmentSend" class="btn primary" type="submit" disabled>이미지와 설명 전송</button></div>
+      <p id="attachmentStatus" class="small" role="status" aria-live="polite"></p>
+      <p class="small">이미지는 서버로 전송하기 전까지 이 기기에만 있습니다. 민감한 도면의 전송·보관 권한을 확인하세요. 전송 성공은 이미지 분석 성공을 뜻하지 않습니다.</p>
+    </form>
+  </dialog>
   <script src="https://cdn.botframework.com/botframework-webchat/4.18.0/webchat.js"></script>
   <script src="js/analyzer.js"></script>
   <script src="js/diff.js"></script>
   <script src="js/ladder.js"></script>
   <script src="js/projects.js"></script>
   <script src="js/conversations.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/attachments.js"></script>
   <script src="js/store.js"></script>
   <script src="js/connection.js"></script>
   <script src="js/panel.js"></script>

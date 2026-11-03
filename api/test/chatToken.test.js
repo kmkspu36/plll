@@ -36,7 +36,9 @@ function setup(options = {}) {
 test("token response excludes upstream extra fields and disables caching", async () => {
   const result = await setup().call();
   assert.equal(result.status, 200);
-  assert.equal(JSON.stringify(result.jsonBody), '{"token":"short-lived-test-token"}');
+  assert.equal(result.jsonBody.token, "short-lived-test-token");
+  assert.equal(result.jsonBody.secret, undefined);
+  assert.equal(result.jsonBody.uploads.verified, false);
   assert.equal(result.headers["Cache-Control"], "no-store");
 });
 test("missing configuration fails closed", async () => {
@@ -72,4 +74,10 @@ test("upstream failures identify rejection, malformed response and transport fai
   assert.equal((await setup({ response: { ok: true, json: async () => { throw new SyntaxError("private"); } } }).call()).jsonBody.code, "BROKER_INVALID_JSON");
   assert.equal((await setup({ response: { ok: true, json: async () => ({}) } }).call()).jsonBody.code, "BROKER_TOKEN_MISSING");
   assert.equal((await setup({ throw: true }).call()).jsonBody.code, "BROKER_NETWORK_ERROR");
+});
+test("upload support is disabled unless server owner explicitly verifies it", async () => {
+  const verified = await setup({ env: { PANEL_IMAGE_UPLOAD_VERIFIED: "1", PANEL_UPLOAD_MAX_FILES: "2" } }).call();
+  assert.equal(verified.jsonBody.uploads.verified, true);
+  assert.equal(verified.jsonBody.uploads.maxFiles, 2);
+  assert.equal((await setup({ env: { PANEL_UPLOAD_MAX_BYTES: "999999999" } }).call()).status, 503);
 });

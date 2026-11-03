@@ -35,6 +35,18 @@
     return WebChat.createStore({}, function () {
       return function (next) {
         return function (action) {
+          if (action && action.type === "WEB_CHAT/SEND_MESSAGE" && action.payload &&
+              Array.isArray(action.payload.attachments) && action.payload.attachments.length) {
+            var cap = P.uploadCapabilities;
+            if (!P.connected || !cap || !cap.verified || action.payload.attachments.length > cap.maxFiles ||
+                action.payload.attachments.some(function (attachment) {
+                  return !attachment.blob || attachment.blob.size <= 0 || attachment.blob.size > cap.maxBytes ||
+                    ["image/png", "image/jpeg"].indexOf(attachment.blob.type) < 0;
+                })) {
+              root.dispatchEvent(new CustomEvent("panellab:error", { detail: "이미지 전송이 차단되었습니다. 기존 에이전트의 업로드 검증과 첨부 형식·크기 제한을 확인하세요." }));
+              return action;
+            }
+          }
           try {
             if (action && action.type === "DIRECT_LINE/INCOMING_ACTIVITY") {
               handleIncoming(action.payload && action.payload.activity, context);

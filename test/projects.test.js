@@ -123,3 +123,17 @@ test("fast reply before send acknowledgement is not changed back to waiting", ()
   dispatch({ type: "DIRECT_LINE/POST_ACTIVITY_FULFILLED", meta, payload });
   assert.equal(f.events.filter((event) => event.type === "panellab:send").at(-1).detail.state, "received");
 });
+test("native send-box attachments cannot bypass unverified upload gate", () => {
+  const f = setup(), c = f.P.conversations.create(f.P.data.active().id);
+  let dispatch, forwarded = 0;
+  f.sandbox.WebChat = { createStore: (_, factory) => { dispatch = factory()((action) => { forwarded++; return action; }); } };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../js/store.js"), "utf8"), f.sandbox);
+  f.P.createStore(c);
+  const action = { type: "WEB_CHAT/SEND_MESSAGE", payload: { text: "analyze", attachments: [{ blob: { size: 10, type: "image/png" } }] } };
+  dispatch(action);
+  assert.equal(forwarded, 0);
+  f.P.connected = true;
+  f.P.uploadCapabilities = { verified: true, maxFiles: 1, maxBytes: 100 };
+  dispatch(action);
+  assert.equal(forwarded, 1);
+});

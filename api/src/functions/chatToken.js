@@ -36,7 +36,17 @@ async function chatToken(request) {
     let data;
     try { data = await response.json(); } catch { return reply(502, "BROKER_INVALID_JSON"); }
     if (!data || typeof data.token !== "string" || !data.token.trim()) return reply(502, "BROKER_TOKEN_MISSING");
-    return { status: 200, headers, jsonBody: { token: data.token } };
+    const uploadVerified = process.env.PANEL_IMAGE_UPLOAD_VERIFIED === "1";
+    const maxFiles = Number(process.env.PANEL_UPLOAD_MAX_FILES || 1);
+    const maxBytes = Number(process.env.PANEL_UPLOAD_MAX_BYTES || 5 * 1024 * 1024);
+    if (!Number.isInteger(maxFiles) || maxFiles < 1 || maxFiles > 5 ||
+        !Number.isInteger(maxBytes) || maxBytes < 1 || maxBytes > 15 * 1024 * 1024) {
+      return reply(503, "SERVER_CONFIG_INVALID");
+    }
+    return {
+      status: 200, headers,
+      jsonBody: { token: data.token, uploads: { verified: uploadVerified, maxFiles, maxBytes } }
+    };
   } catch (error) {
     return reply(502, error.name === "TimeoutError" || error.name === "AbortError" ? "BROKER_TIMEOUT" : "BROKER_NETWORK_ERROR");
   }

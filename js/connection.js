@@ -40,6 +40,7 @@
     generation++;
     ready = false;
     P.connected = false;
+    P.uploadCapabilities = null;
     clearTimeout(connectTimeout);
     if (controller) controller.abort();
     if (subscription) subscription.unsubscribe();
@@ -109,6 +110,11 @@
         return;
       }
       var context = P.conversations.active() || P.conversations.create(P.data.active().id);
+      var uploads = data.uploads;
+      P.uploadCapabilities = uploads && uploads.verified === true &&
+        Number.isInteger(uploads.maxFiles) && uploads.maxFiles >= 1 && uploads.maxFiles <= 5 &&
+        Number.isInteger(uploads.maxBytes) && uploads.maxBytes > 0 && uploads.maxBytes <= 15 * 1024 * 1024 ?
+        { verified: true, maxFiles: uploads.maxFiles, maxBytes: uploads.maxBytes } : null;
       store = P.createStore(context);
       directLine = root.WebChat.createDirectLine({ token: data.token });
       var line = directLine, greeted = false;
@@ -179,6 +185,19 @@
   P.sendRequest = function (text) {
     if (!ready || !store) return false;
     store.dispatch({ type: "WEB_CHAT/SEND_MESSAGE", payload: { text: text } });
+    return true;
+  };
+  P.sendAttachments = function (files, text) {
+    var cap = P.uploadCapabilities;
+    if (!ready || !store || !cap || !cap.verified || !Array.isArray(files) || !files.length ||
+        files.length > cap.maxFiles || files.some(function (file) {
+          return !(file instanceof File) || file.size <= 0 || file.size > cap.maxBytes ||
+            ["image/png", "image/jpeg"].indexOf(file.type) < 0;
+        })) return false;
+    store.dispatch({
+      type: "WEB_CHAT/SEND_MESSAGE",
+      payload: { text: text, attachments: files.map(function (file) { return { blob: file }; }) }
+    });
     return true;
   };
 })(window);

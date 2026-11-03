@@ -43,7 +43,7 @@ function setup(fetchResponse) {
   };
   const sandbox = {
     window: root, document: { getElementById: element, querySelector: element },
-    AbortController, CustomEvent: class { constructor(type) { this.type = type; } }, setTimeout, clearTimeout,
+    AbortController, File, CustomEvent: class { constructor(type) { this.type = type; } }, setTimeout, clearTimeout,
     fetch: async (url, options) => {
       requests.push({ url, options });
       return fetchResponse ? fetchResponse(url, options) : { ok: true, json: async () => ({ token: "test-token" }) };
@@ -144,4 +144,26 @@ test("connection screen mirrors diagnostic and retry state", async () => {
   assert.equal(f.element("retryConnectionScreen").hidden, false);
   assert.equal(f.element("webchat").hidden, true);
   assert.equal(f.element("offlineComposer").hidden, false);
+});
+test("attachment send requires verified capabilities and a live connection", async () => {
+  const image = new File(["test"], "test.png", { type: "image/png" });
+  const f = setup();
+  await f.P.connect(); f.lines[0].emit(2);
+  assert.equal(f.P.sendAttachments([image], "analyze"), false);
+  f.P.disconnect();
+  const verified = setup(async () => ({
+    ok: true, json: async () => ({ token: "test-token", uploads: { verified: true, maxFiles: 1, maxBytes: 1024 } })
+  }));
+  await verified.P.connect();
+  assert.equal(verified.P.sendAttachments([image], "analyze"), false);
+  verified.lines[0].emit(2);
+  assert.equal(verified.P.sendAttachments([image], "analyze"), true);
+  const action = verified.dispatched[0];
+  assert.equal(action.type, "WEB_CHAT/SEND_MESSAGE");
+  assert.equal(action.payload.text, "analyze");
+  assert.equal(action.payload.attachments[0].blob, image);
+  assert.equal(verified.P.sendAttachments([image, image], "too many"), false);
+  assert.equal(verified.P.sendAttachments([new File(["data"], "bad.svg", { type: "image/svg+xml" })], ""), false);
+  verified.P.disconnect();
+  assert.equal(verified.P.uploadCapabilities, null);
 });

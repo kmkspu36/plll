@@ -83,6 +83,44 @@ Parser examples are test inputs, not agent responses or proof of PLC validity.
 GX Works compilation and equipment validation are separate, mandatory engineering
 steps. CPU defaults to unspecified.
 
+## Images: preparation versus verified analysis
+
+The attachment dialog prepares real PNG/JPEG files locally: extension, MIME,
+signature, decode and resolution checks; preview, removal/replacement, optional
+description and explicit original-file storage. The default preparation limit
+is one file of 5 MiB. General documents are not enabled. Preparing or storing an
+image does not upload it, and does not mean the agent analyzed it.
+
+Only after the owner has verified the existing agent's File uploads setting,
+published Direct Line channel, image-only and image+text behavior, set the
+**server-only** `PANEL_IMAGE_UPLOAD_VERIFIED=1`. Keep it disabled until that real
+verification. `PANEL_UPLOAD_MAX_FILES` (1–5, default 1) and
+`PANEL_UPLOAD_MAX_BYTES` (up to 15 MiB, default 5 MiB) must reflect tested limits,
+not inferred service capacity. This flag is an operator assertion, not automated
+proof that Copilot Studio accepts images. It does not change agent instructions.
+
+The app sends files and text in one `WEB_CHAT/SEND_MESSAGE` action with
+`attachments: [{ blob: File }]`, matching Web Chat 4.18.0's send-message saga.
+Web Chat owns the Direct Line upload and retry state. No file is sent through
+the token Broker and no external AI or public file-hosting service is added.
+Image-only requests include a transparent analysis-request prompt. No percentage
+progress or analysis result is fabricated. Live uploads remain unverified here.
+
+## Local original files and backups
+
+Explicitly saved image Blobs use IndexedDB `panellab.workspace.v1`, scoped to
+their project, and can be reopened, downloaded or individually deleted from
+**보관한 이미지**. They are not encrypted, synced or guaranteed against browser
+eviction. Deleting a local copy does not delete a previously uploaded server file.
+Changing projects never implicitly sends an image.
+
+Existing projects/conversations/results remain authoritative in localStorage.
+The settings action creates a new transactional IndexedDB snapshot and downloads
+its JSON without removing or overwriting old data. This is a non-destructive
+backup step, not a completed primary-store migration or server synchronization.
+JSON exports contain text/metadata, not original file bytes; download originals
+separately. Do not treat expiring attachment URLs as permanent file backups.
+
 ## Local checks
 
 With Node.js 22+ installed, run `node test/analyzer.test.js` and the additional
