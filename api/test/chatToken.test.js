@@ -17,6 +17,7 @@ function setup(options = {}) {
     fetch: async (url, init) => {
       calls++;
       assert.equal(init.redirect, "error");
+      assert.equal(init.headers.Origin, options.env && options.env.PANEL_BROKER_ORIGIN || "https://panel.example");
       assert.deepEqual(JSON.parse(init.body), { sealed: "test-only" });
       if (options.throw) throw new Error("test failure");
       return options.response || { ok: true, json: async () => ({ token: "short-lived-test-token", secret: "not-forwarded" }) };
@@ -60,6 +61,15 @@ test("origin and principal are required", async () => {
 });
 test("HTTP broker URL is refused", async () => {
   assert.equal((await setup({ env: { PANEL_BROKER_URL: "http://broker.example" } }).call()).status, 503);
+});
+test("Broker receives configured original site Origin, never an arbitrary caller Origin", async () => {
+  const fixture = setup({ env: { PANEL_BROKER_ORIGIN: "https://original-site.example" } });
+  assert.equal((await fixture.call()).status, 200);
+  assert.equal((await fixture.call({ origin: "https://attacker.example" })).status, 403);
+  assert.equal(fixture.calls(), 1);
+  const invalid = setup({ env: { PANEL_BROKER_ORIGIN: "https://original-site.example/path" } });
+  assert.equal((await invalid.call()).jsonBody.code, "SERVER_CONFIG_INVALID");
+  assert.equal(invalid.calls(), 0);
 });
 test("upstream errors never forward broker body", async () => {
   assert.equal((await setup({ response: { ok: false, status: 401 } }).call()).status, 502);

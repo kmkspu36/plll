@@ -16,6 +16,7 @@
   var DISCLAIMER = "기존 에이전트의 응답을 표시한 결과입니다. GX Works 컴파일 및 실제 PLC 검증을 대체하지 않습니다.";
 
   var tab = "all";
+  var renderVersion = 0, localPreviewUrls = [];
   var startedConversations = new Set();
   var body = document.getElementById("resultBody");
   var tabsEl = document.getElementById("resultTabs");
@@ -190,7 +191,7 @@
     c.appendChild(h);
     var content = el("div", "card-content");
     c.appendChild(content);
-    if (rec.type !== "raw_response") content.appendChild(note("응답 형식의 자동 분류는 실제 에이전트에서 미검증 상태입니다. AI 원본 응답과 함께 확인하세요."));
+    if (rec.type !== "raw_response") content.appendChild(note("응답에서 자동 분류한 결과입니다. 지원 형식과 추출 내용을 AI 원본 응답과 함께 확인하세요."));
     extra(content, actions);
     var collapse = el("button", "btn sm", "접기"); collapse.type = "button"; collapse.setAttribute("aria-expanded", "true");
     collapse.onclick = function () {
@@ -353,13 +354,33 @@
           approve.type = "button"; approve.disabled = rec.approval === "approved";
           approve.onclick = function () {
             if (confirm("수정안을 이 프로젝트의 브라우저 작업본으로 반영할까요? 원본은 보존되며 PLC 장비에는 전송하지 않습니다.")) {
-              D.approve(rec.key);
-              var viewer = document.getElementById("resultViewer");
-              if (viewer.open) viewer.close();
+              try {
+                D.approve(rec.key);
+                var viewer = document.getElementById("resultViewer");
+                if (viewer.open) viewer.close();
+              } catch (error) { notify(error.message); }
             }
           };
           a.appendChild(approve);
+          var reject = el("button", "btn sm", rec.approval === "rejected" ? "거부됨" : "거부");
+          reject.type = "button"; reject.disabled = rec.approval === "approved" || rec.approval === "rejected";
+          reject.onclick = function () {
+            var reason = root.prompt("거부 이유를 입력하세요. 원본과 수정 제안은 삭제하지 않습니다.");
+            if (reason === null) return;
+            try { D.reject(rec.key, reason); }
+            catch (error) { notify(error.message); }
+          };
+          a.appendChild(reject);
+          var revise = el("button", "btn sm", "추가 수정 요청"); revise.type = "button";
+          revise.onclick = function () {
+            var detail = root.prompt("AGENT 01에 요청할 추가 수정 내용을 입력하세요.");
+            if (!detail || !detail.trim()) return;
+            if (!P.sendRequest("다음 수정 제안에 추가 수정을 요청합니다. CPU·호환성을 추측하지 마세요.\n요청: " +
+              detail.trim() + "\n수정 전:\n" + d.before + "\n수정 제안:\n" + d.after)) notify("에이전트가 연결되지 않아 요청을 전송하지 않았습니다.");
+          };
+          a.appendChild(revise);
           c.appendChild(note(rec.approval === "approved" ? "사용자가 승인한 브라우저 작업본입니다. PLC에 적용되지 않았습니다." :
+            rec.approval === "rejected" ? "거부된 수정 제안입니다. 이유: " + rec.rejectionReason :
             "미승인 수정 제안입니다. 승인 전에는 현재 작업본에 반영하지 않습니다. 수정 이유는 AI 원본 응답을 확인하세요."));
           c.appendChild(el("h4", null, "변경 부분 강조"));
           c.appendChild(diffView(d.before, d.after));
@@ -410,6 +431,8 @@
 
   /* ---------- render ---------- */
   function render() {
+    var revision = ++renderVersion;
+    localPreviewUrls.forEach(function (url) { URL.revokeObjectURL(url); }); localPreviewUrls = [];
     var proj = D.active();
     var all = D.resultsFor(proj.id);
     var types = TAB_TYPES[tab];
@@ -442,6 +465,30 @@
     });
     document.getElementById("clearSearch").hidden = !query;
     document.getElementById("clearResults").disabled = all.length === 0;
+    if ((tab === "all" || tab === "files") && !taskFilter) {
+      P.storage.filesFor(proj.id).then(function (files) {
+        if (revision !== renderVersion || D.active().id !== proj.id) return;
+        files.filter(function (file) { return !query || file.name.toLocaleLowerCase().indexOf(query) >= 0; }).forEach(function (file) {
+          var empty = body.querySelector(".empty"); if (empty) empty.remove();
+          var article = el("article", "card"), heading = el("header", "card-h");
+          heading.appendChild(el("strong", null, file.name)); article.appendChild(heading);
+          var content = el("div", "card-content"), img = el("img", "att-img");
+          var url = URL.createObjectURL(file.blob); localPreviewUrls.push(url);
+          img.src = url; img.alt = file.name;
+          img.onerror = function () { img.replaceWith(note("로컬 이미지 미리보기에 실패했습니다. 원본 파일을 확인하세요.")); };
+          content.appendChild(img); content.appendChild(note("로컬 보관 원본 · AI 전송·분석 완료를 뜻하지 않습니다."));
+          var save = el("button", "btn sm", "원본 저장"); save.type = "button";
+          save.onclick = function () { download(file.blob, file.name, file.blob.type); };
+          var prepare = el("button", "btn sm", "요청 준비"); prepare.type = "button";
+          prepare.onclick = async function () {
+            try { await P.attachments.useSaved(file); } catch (error) { notify(error.message); }
+          };
+          content.appendChild(save); content.appendChild(prepare); article.appendChild(content); body.appendChild(article);
+        });
+      }).catch(function (error) {
+        if (revision === renderVersion) body.appendChild(note("로컬 첨부를 읽지 못했습니다: " + error.message));
+      });
+    }
     document.getElementById("projectName").textContent = proj.name;
     document.getElementById("projectMeta").textContent =
       [proj.vendor || "제조사 미정", proj.software, proj.cpu || "CPU 미정"].join(" · ");
@@ -474,6 +521,7 @@
     }
   });
   D.onChange(render);
+  root.addEventListener("panellab:files", render);
 
   /* ---------- navigation / dialogs ---------- */
   var app = document.getElementById("app");
@@ -487,6 +535,7 @@
       app.style.removeProperty("--workspace-height");
       app.style.removeProperty("--workspace-top");
     }
+    updateResultsControl();
   }
   root.addEventListener("resize", updateViewport);
   if (root.visualViewport) {
@@ -506,6 +555,7 @@
     if (v === "results") setResults(true);
     app.dataset.view = v;
     document.querySelectorAll(".mtab").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.view === v)); });
+    updateResultsControl();
   }
   function dashboard() {
     setView("chat"); setResults(true);
@@ -515,14 +565,20 @@
     document.querySelectorAll("[data-nav]").forEach(function (button) { button.removeAttribute("aria-current"); });
     document.querySelector('[data-nav="dashboard"]').setAttribute("aria-current", "page");
     document.querySelectorAll(".mtab").forEach(function (button) { button.setAttribute("aria-pressed", String(button.id === "mobileDashboard")); });
+    updateResultsControl();
+  }
+  function updateResultsControl() {
+    var panel = document.getElementById("resultsPanel");
+    var visible = !panel.hidden && root.getComputedStyle(panel).display !== "none";
+    var toggle = document.getElementById("toggleResults");
+    toggle.setAttribute("aria-expanded", String(visible));
+    toggle.textContent = visible ? "결과 닫기" : "결과 열기";
   }
   function setResults(open) {
     app.dataset.results = open ? "open" : "closed";
     document.getElementById("resultsPanel").hidden = !open;
-    var toggle = document.getElementById("toggleResults");
-    toggle.setAttribute("aria-expanded", String(open));
-    toggle.textContent = open ? "결과 닫기" : "결과 열기";
     if (!open && app.dataset.view === "results") setView("chat");
+    updateResultsControl();
   }
   var dlg = document.getElementById("dlg"), dlgTitle = document.getElementById("dlgTitle"), dlgBody = document.getElementById("dlgBody");
   function openDialog(title, build) {
@@ -574,6 +630,8 @@
       if (creating) return;
       var files = el("button", "btn", "현재 프로젝트의 보관한 이미지"); files.type = "button";
       files.onclick = function () { dlg.close(); filesDialog(); }; b.appendChild(files);
+      var engineering = el("button", "btn", "I/O · 라벨 · 버전 · 오류 · 도면 근거 · 작업 상태");
+      engineering.type = "button"; engineering.onclick = function () { engineeringDialog("io"); }; b.appendChild(engineering);
       var clr = el("button", "btn danger", "이 프로젝트의 작업 결과 삭제"); clr.type = "button";
       clr.onclick = function () { if (confirm("이 프로젝트의 저장된 작업 결과를 삭제할까요? 채팅 내용은 영향받지 않습니다.")) { D.clearResults(proj.id); dlg.close(); } };
       b.appendChild(clr);
@@ -586,10 +644,146 @@
       var ul = el("ul", "hist");
       items.forEach(function (h) {
         var li = el("li"); li.appendChild(el("span", "time", fmtTime(h.time)));
-        li.appendChild(el("span", "badge " + h.kind, h.kind === "user" ? "요청" : "결과"));
+        li.appendChild(el("span", "badge " + h.kind, h.kind === "user" ? "요청" : h.kind === "local" ? "사용자 기록" : "결과"));
         li.appendChild(el("span", null, h.text)); ul.appendChild(li);
       });
       b.appendChild(ul);
+    });
+  }
+  var engineeringLabels = { io: "I/O 주소", labels: "글로벌 라벨", versions: "코드 버전", issues: "오류 관리", evidence: "도면 근거", stages: "작업 상태", report: "통합 보고서" };
+  var recordLabels = {
+    io: { kind: "주소 종류", address: "주소", name: "신호명", description: "설명" },
+    labels: { name: "변수명", address: "주소", dataType: "자료형", description: "설명" },
+    issues: { kind: "오류 종류", location: "위치", cause: "원인", suggestion: "수정 제안", status: "사용자 처리 상태", sourceKey: "원본 결과" },
+    evidence: { fileId: "도면 파일", location: "도면 내 위치 (페이지·영역 등)", address: "확인된 주소", variable: "관련 변수 (쉼표 구분)", uncertainty: "추가 확인 사항", sourceKey: "원본 결과" }
+  };
+  function choice(form, label, options) {
+    var wrapper = el("label", "fld"); wrapper.appendChild(el("span", null, label));
+    var select = el("select");
+    options.forEach(function (item) { var option = el("option", null, item[1]); option.value = item[0]; select.appendChild(option); });
+    wrapper.appendChild(select); form.appendChild(wrapper); return select;
+  }
+  function engineeringDialog(section, editing) {
+    var projectId = D.active().id, E = P.engineering;
+    openDialog(D.active().name + " · 전문 데이터", function (container) {
+      var tabs = el("div", "engineering-tools");
+      Object.keys(engineeringLabels).forEach(function (key) {
+        var button = el("button", "btn sm" + (key === section ? " primary" : ""), engineeringLabels[key]);
+        button.type = "button"; button.onclick = function () { engineeringDialog(key); }; tabs.appendChild(button);
+      });
+      container.appendChild(tabs);
+      container.appendChild(note("현재 프로젝트에만 로컬 저장합니다. 사용자 등록·확인 기록이며 PLC 컴파일 또는 장비 적용이 아닙니다."));
+      var status = el("p", "engineering-message"); status.setAttribute("role", "status"); status.hidden = true;
+      container.appendChild(status);
+      function error(message) { status.hidden = false; status.textContent = message; }
+      function button(label, action, parent) {
+        var control = el("button", "btn sm", label); control.type = "button";
+        control.onclick = function () { try { action(); } catch (failure) { error(failure.message); } };
+        (parent || container).appendChild(control); return control;
+      }
+      function results() { return [["", "선택 안 함"]].concat(D.resultsFor(projectId).map(function (item) { return [item.key, (item.title || item.type) + " · " + fmtTime(item.receivedAt)]; })); }
+      if (section === "report") {
+        var report = P.reports.markdown(projectId);
+        container.appendChild(el("pre", "report-preview", report));
+        button("보고서 Markdown 저장", function () { download(report, "panellab-report.md", "text/markdown"); });
+        return;
+      }
+      if (section === "versions") {
+        var versions = E.versions(projectId);
+        var actual = D.resultsFor(projectId).filter(function (item) { return item.type === "plc_code" || item.type === "correction" && item.approval === "approved"; });
+        var form = el("form", "form");
+        var source = choice(form, "보존할 실제 코드 결과", [["", "결과 선택"]].concat(actual.map(function (item) { return [item.key, (item.title || item.type) + " · " + fmtTime(item.receivedAt)]; })));
+        var title = field(form, "버전 이름", "versionTitle", "");
+        var save = el("button", "btn primary", "선택한 코드를 새 버전으로 보존"); save.type = "submit"; form.appendChild(save);
+        form.onsubmit = function (event) {
+          event.preventDefault();
+          try {
+            var rec = actual.find(function (item) { return item.key === source.value; });
+            if (!rec) throw new Error("실제 코드 결과를 선택하세요.");
+            E.addVersion(projectId, rec.type === "correction" ? rec.data.after : rec.data.code, title.value, rec.key);
+            engineeringDialog(section);
+          } catch (failure) { error(failure.message); }
+        };
+        container.appendChild(form);
+        versions.slice().reverse().forEach(function (item) {
+          var detail = el("details", "archive-item"); detail.appendChild(el("summary", null, item.title + " · " + new Date(item.createdAt).toLocaleString("ko-KR")));
+          detail.appendChild(codeView(item.code));
+          var row = el("div", "record-actions");
+          row.appendChild(copyBtn(function () { return item.code; }));
+          button("이 버전으로 복원", function () {
+            if (confirm("이 코드를 최신 로컬 버전으로 복원할까요? 기존 버전은 모두 유지되며 PLC에는 반영하지 않습니다.")) {
+              E.restoreVersion(projectId, item.id); engineeringDialog(section);
+            }
+          }, row);
+          var previous = versions[versions.indexOf(item) - 1];
+          if (previous) button("이전 버전과 비교", function () { detail.appendChild(diffView(previous.code, item.code)); }, row);
+          detail.appendChild(row); container.appendChild(detail);
+        });
+        if (!versions.length) container.appendChild(note("보존된 버전이 없습니다. 실제 코드 결과를 수신한 후 등록하세요."));
+        return;
+      }
+      if (section === "stages") {
+        container.appendChild(note("완료는 이 단계에 연결한 실제 결과와 사용자 확인 이유가 있어야 저장됩니다. 새 요청 또는 결과 삭제 후에는 다시 확인해야 합니다."));
+        var stageForm = el("form", "form");
+        var task = choice(stageForm, "작업 단계", Object.keys(D.taskLabels).map(function (key) { return [key, D.taskLabels[key]]; }));
+        var state = choice(stageForm, "상태", Object.keys(E.states).map(function (key) { return [key, E.states[key]]; }));
+        var result = choice(stageForm, "근거 결과 (결과 카드에서 먼저 작업 단계를 분류하세요)", results());
+        var reason = field(stageForm, "확인 이유·처리 근거", "reason", "");
+        var submit = el("button", "btn primary", "사용자 확인 기록 저장"); submit.type = "submit"; stageForm.appendChild(submit);
+        stageForm.onsubmit = function (event) {
+          event.preventDefault();
+          try { E.setStage(projectId, task.value, state.value, result.value, reason.value); engineeringDialog(section); }
+          catch (failure) { error(failure.message); }
+        };
+        container.appendChild(stageForm);
+        Object.keys(D.taskLabels).forEach(function (key) {
+          var entry = E.stage(projectId, key);
+          container.appendChild(note(D.taskLabels[key] + ": " + (entry ? E.states[entry.state] + " — " + entry.note : "미확인")));
+        });
+        return;
+      }
+      var recordForm = el("form", "form"), inputs = {};
+      Object.keys(recordLabels[section]).forEach(function (key) {
+        if (key === "kind" && section === "io") inputs[key] = choice(recordForm, recordLabels[section][key], [["input", "입력"], ["output", "출력"], ["device", "디바이스"]]);
+        else if (key === "status") inputs[key] = choice(recordForm, recordLabels[section][key], [["open", "미해결"], ["review", "사용자 확인 필요"], ["resolved", "사용자 해결 확인"]]);
+        else if (key === "sourceKey") inputs[key] = choice(recordForm, recordLabels[section][key], results());
+        else if (key === "fileId") inputs[key] = choice(recordForm, recordLabels[section][key], [["", "파일 불러오는 중"]]);
+        else inputs[key] = field(recordForm, recordLabels[section][key], key, editing ? editing.values[key] : "");
+        if (editing && key !== "fileId") inputs[key].value = editing.values[key];
+      });
+      if (inputs.fileId) {
+        P.storage.filesFor(projectId).then(function (files) {
+          if (!recordForm.isConnected) return;
+          inputs.fileId.textContent = "";
+          [["", "파일 선택 안 함"]].concat(files.map(function (file) { return [file.id, file.name]; })).forEach(function (item) {
+            var option = el("option", null, item[1]); option.value = item[0]; inputs.fileId.appendChild(option);
+          });
+          if (editing) inputs.fileId.value = editing.values.fileId;
+        }).catch(function (failure) { error(failure.message); });
+      }
+      var add = el("button", "btn primary", editing ? "정정 내용 저장 (이전 값 보존)" : "기록 추가"); add.type = "submit"; recordForm.appendChild(add);
+      recordForm.onsubmit = function (event) {
+        event.preventDefault();
+        try {
+          if (D.active().id !== projectId) throw new Error("프로젝트가 변경되었습니다. 다시 열어 주세요.");
+          var values = {}; Object.keys(inputs).forEach(function (key) { values[key] = inputs[key].value; });
+          E.addRecord(projectId, section, values, editing && editing.id); engineeringDialog(section);
+        } catch (failure) { error(failure.message); }
+      };
+      container.appendChild(recordForm);
+      var table = el("table", "engineering-table"), head = el("tr");
+      Object.keys(recordLabels[section]).forEach(function (key) { head.appendChild(el("th", null, recordLabels[section][key])); });
+      head.appendChild(el("th", null, "정정")); var thead = el("thead"); thead.appendChild(head); table.appendChild(thead);
+      var tbody = el("tbody");
+      E.list(projectId, section).forEach(function (item) {
+        var row = el("tr");
+        Object.keys(recordLabels[section]).forEach(function (key) { row.appendChild(el("td", null, item.values[key] || "—")); });
+        var action = el("td"); button("정정", function () { engineeringDialog(section, item); }, action); row.appendChild(action);
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody); var scroll = el("div", "table-scroll"); scroll.appendChild(table); container.appendChild(scroll);
+      container.appendChild(note("주소 중복은 후보 안내입니다. 접점 재사용·기종별 주소 체계·코드 유효성을 자동 판정하지 않습니다. 미선언 참조 확인은 등록된 도면 근거와 라벨 사이에서만 수행합니다."));
+      E.diagnostics(projectId).forEach(function (message) { container.appendChild(note(message)); });
     });
   }
   function settingsDialog() {
@@ -629,6 +823,32 @@
       };
       b.appendChild(el("p")).appendChild(backup);
       b.appendChild(note("백업은 기존 localStorage를 삭제하거나 대체하지 않습니다. 내보내기 JSON에 이미지 원본은 포함되지 않으므로 보관한 이미지에서 개별 저장하세요."));
+      var completeBackup = el("button", "btn", "이미지·전문 데이터를 포함한 프로젝트 백업");
+      completeBackup.type = "button";
+      completeBackup.onclick = async function () {
+        completeBackup.disabled = true;
+        try {
+          var pack = await P.reports.exportProject(D.active().id);
+          download(JSON.stringify(pack, null, 2), "panellab-project-backup.json", "application/json");
+          notify("백업 파일을 생성했습니다. 다운로드 완료 여부는 브라우저에서 확인하세요.");
+        } catch (error) { notify("프로젝트 백업 실패: " + error.message); }
+        finally { completeBackup.disabled = false; }
+      };
+      b.appendChild(el("p")).appendChild(completeBackup);
+      var restorePicker = el("input"); restorePicker.type = "file"; restorePicker.accept = ".json,application/json";
+      var restoreLabel = el("label", "fld"); restoreLabel.appendChild(el("span", null, "프로젝트 백업 복원 (기존 프로젝트는 유지하고 새 프로젝트로 추가)"));
+      restoreLabel.appendChild(restorePicker); b.appendChild(restoreLabel);
+      restorePicker.onchange = async function () {
+        var file = restorePicker.files[0]; if (!file) return;
+        if (!confirm("백업을 새 프로젝트로 복원한 뒤 화면을 새로고칩니다. 현재 서버 대화는 자동 재개되지 않습니다. 계속할까요?")) { restorePicker.value = ""; return; }
+        restorePicker.disabled = true;
+        try {
+          if (file.size > 75 * 1024 * 1024) throw new Error("백업 파일은 75MB 이하만 복원할 수 있습니다.");
+          var pack = JSON.parse(await file.text());
+          await P.reports.restore(pack);
+          P.disconnect(); root.location.reload();
+        } catch (error) { notify("복원 실패: " + error.message); restorePicker.disabled = false; restorePicker.value = ""; }
+      };
     });
   }
 
@@ -648,7 +868,11 @@
   document.querySelectorAll(".mtab").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
   document.getElementById("projectSelect").onchange = function (e) { D.setActive(e.target.value); };
   document.getElementById("editProject").onclick = projectDialog;
+  document.getElementById("dashboardEngineering").onclick = function () { engineeringDialog("io"); };
   document.getElementById("toggleResults").onclick = function () {
+    if (app.dataset.page === "dashboard" && root.matchMedia("(max-width:1200px)").matches) {
+      setView("results"); updateResultsControl(); return;
+    }
     var open = app.dataset.results !== "open";
     setResults(open);
     if (open) setView("results");
@@ -746,7 +970,7 @@
           remove.onclick = async function () {
             if (!confirm("이 브라우저에 보관한 이미지 원본을 삭제할까요? 이미 전송한 서버 첨부와 대화 기록은 삭제되지 않습니다.")) return;
             remove.disabled = true;
-            try { await P.storage.removeFile(record.id); c.remove(); if (!list.children.length) list.appendChild(el("p", "empty", "보관한 이미지가 없습니다.")); }
+            try { await P.storage.removeFile(record.id); root.dispatchEvent(new CustomEvent("panellab:files")); c.remove(); if (!list.children.length) list.appendChild(el("p", "empty", "보관한 이미지가 없습니다.")); }
             catch (error) { notify(error.message); remove.disabled = false; }
           };
           row.appendChild(save); row.appendChild(use); row.appendChild(remove); c.appendChild(row); list.appendChild(c);

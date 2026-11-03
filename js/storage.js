@@ -51,6 +51,22 @@
     await transaction("files", "readwrite", function (store) { return store.put(record); });
     return record.id;
   }
+  async function writeFiles(records, remove) {
+    records.forEach(validateFile);
+    var db = await open();
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction("files", "readwrite");
+      tx.oncomplete = resolve;
+      tx.onabort = function () { reject(new Error("첨부 복원 작업에 실패했습니다. 기존 파일은 변경하지 않았습니다.")); };
+      tx.onerror = function () { /* onabort reports the transaction failure. */ };
+      try {
+        records.forEach(function (record) {
+          if (remove) tx.objectStore("files").delete(record.id);
+          else tx.objectStore("files").add(record);
+        });
+      } catch (error) { tx.abort(); }
+    });
+  }
   async function backupLegacy() {
     var values = {};
     LEGACY_KEYS.forEach(function (key) {
@@ -67,6 +83,8 @@
   }
   root.PanelLab.storage = {
     saveFile: saveFile,
+    addFiles: function (records) { return writeFiles(records, false); },
+    rollbackFiles: function (records) { return writeFiles(records, true); },
     filesFor: function (projectId) {
       return transaction("files", "readonly", function (store) { return store.index("projectId").getAll(projectId); });
     },

@@ -15,7 +15,8 @@ unclassified. A project marked complete is not a successful AI or PLC verificati
 Navigation offers drawing analysis, ladder, code generation, error review,
 correction, verification and reporting as ordinary requests to **AGENT 01 only**.
 The owner's internal AGENT 02–08 connections are neither configured nor changed
-by this website. The existing Direct Line/Broker/authentication code is unchanged.
+by this website. The existing Direct Line/Broker/authentication flow is unchanged;
+Web Chat's presentation options use the same light workspace palette.
 No additional API or paid library is introduced.
 
 Project descriptions, user status, creation/last-activity dates and stage request
@@ -28,6 +29,29 @@ linked responses without manufacturing a new response schema. No automatic stage
 completion, job progress percentage, GX Works compilation or equipment test is
 claimed. Reports need the existing agent's actual responses and context.
 
+The overview now spans the workspace above the project/chat/result columns.
+`전문 데이터` opens project-isolated I/O, global labels, errors, drawing evidence,
+code versions, stage confirmations and report export. These are local user records,
+not new AI capabilities. Address diagnostics flag exact normalized I/O duplicates
+as candidates; missing-label hints compare registered drawing references to
+registered labels, not arbitrary PLC code or a compiler symbol table.
+
+Corrections preserve old field values. Code versions preserve exact source text;
+restoring a version appends a new local version, without overwriting prior versions
+or sending anything to GX Works/PLC. Unapproved corrections cannot be promoted
+through the version picker. Correction rejection records a reason without deleting
+the proposal; additional revision requests go to AGENT 01 only when connected.
+
+Stage completion requires a real result assigned to that stage and an explicit
+user reason. Later requests or removing/reclassifying the supporting result
+invalidate the displayed completion while preserving its historical record.
+The overview displays confirmed stages out of seven, never estimated agent progress.
+The Markdown report gathers actual original responses, source IDs, user states and
+unconfirmed items. It does not manufacture an AI report or hardware verification.
+
+Native Web Chat code blocks receive a copy toolbar without replacing Web Chat,
+altering stored Activities, or forcing transcript scroll positions.
+
 The dashboard and workspace switch without unmounting Web Chat. Results remain
 conditional; mobile has separate Home, Chat, Results and Menu controls. The native
 Web Chat composer/transcript and image-preparation gate are retained. User/account
@@ -37,10 +61,20 @@ cloud synchronization still require verified service support.
 
 | Storage | Current use | Limits |
 |---|---|---|
-| localStorage | Projects, conversation Activities, results and task references | Small browser quota; no cross-device sync or encryption |
+| localStorage | Projects, conversation Activities, results, engineering records and task references | Small browser quota; no cross-device sync or encryption |
 | IndexedDB | Explicit original-image storage and legacy backups | Browser eviction possible; per-browser access |
-| File export | Project JSON and individual original images | Manual backup; JSON does not contain image bytes; import is not implemented |
+| File export | Legacy JSON export, original images, Markdown report, full project backup | Full backup includes image bytes; maximum 50MB image data, 75MB input JSON |
 | Cloud storage | Not configured | Needs authentication, deployment, access policy and cost review |
+
+Settings offers a separate full-project backup and additive restore. Restore validates
+the format, project ownership and image signatures, generates new project/record IDs,
+remaps source links, and keeps existing projects. It checks for changes during file
+restoration and rolls back written keys on failure. Close other editing tabs first;
+browser storage is not a cross-tab transactional database. Reload after restore is
+required, and it does not resume a server conversation. Keep external backup files:
+browser crash/eviction and interruptions between IndexedDB and localStorage cannot
+be made fully atomic. The legacy export remains available but is not the new
+restorable package format.
 
 ## Deployment and authentication
 
@@ -59,6 +93,12 @@ Set these **server-only** application settings:
 - `PANEL_BROKER_URL`: the existing HTTPS Direct Line broker endpoint.
 - `PANEL_BROKER_SEALED`: a newly issued broker credential, never a public value.
 - `PANEL_ALLOWED_ORIGIN`: the exact deployed site origin, without a trailing slash.
+- `PANEL_BROKER_ORIGIN` (optional): the exact original site origin accepted by
+  the existing Broker/credential. Defaults to `PANEL_ALLOWED_ORIGIN`. This is a
+  server-controlled upstream header, never copied from an arbitrary caller.
+  When testing locally or moving hosts, keep it at the origin verified with the
+  Broker until its owner issues credentials for the new deployment. This does
+  not relax the incoming Origin or hosting authentication checks.
 
 The endpoint fails closed without configuration or an authenticated Azure Static
 Web Apps principal. Sign in through the hosting provider's configured login route
@@ -97,6 +137,41 @@ binds only `127.0.0.1`, requires its exact Host and Origin, and ignores incoming
 principal headers. Do not publish, forward, or tunnel this developer server.
 Restart after changing settings. For deployment, use real hosting authentication;
 the Azure endpoint does not read or honor this local-development flag.
+
+### Azure Portal preparation (no credential in chat or source)
+
+The manually triggered `Deploy PanelLab to Azure` GitHub Actions workflow stages
+only `index.html`, `css`, `js` and `staticwebapp.config.json` as frontend files.
+The existing `api` is deployed separately as a managed API, not as public static
+content. Node.js 22 is selected according to Microsoft's
+[managed API runtime reference](https://learn.microsoft.com/azure/static-web-apps/languages-runtimes).
+The workflow does not create an Azure resource, select a paid plan, or deploy
+automatically on push. Running it requires an existing Static Web App.
+
+1. In Azure Portal, choose/create the Static Web App for this site. Review the
+   Free plan's suitability and quotas; do not select a paid plan without approval.
+   Keep the existing Direct Line Broker resource and agent configuration unchanged.
+2. Privately store that Static Web App's deployment token as the repository
+   Actions secret `AZURE_STATIC_WEB_APPS_API_TOKEN`. Do not send it in chat.
+   If Portal generated another deployment workflow, choose a single workflow
+   rather than deploying the same site twice.
+3. In the Static Web App's application/environment settings, register the three
+   `PANEL_` server values listed above. The allowed origin is the Static Web App's
+   actual HTTPS origin, not the GitHub Pages URL. Use only a newly issued Broker
+   credential. Keep image upload unverified until real channel tests pass.
+4. The route configuration restricts `/api/*` to the custom `engineer` role.
+   Use Portal role management to invite the intended GitHub user with that role,
+   accept the invitation, and sign in at `/.auth/login/github`. Merely having a
+   GitHub account or being signed in is not sufficient. See Microsoft's
+   [authentication reference](https://learn.microsoft.com/azure/static-web-apps/authentication-authorization).
+5. Run `Deploy PanelLab to Azure` on `main`. Review the deployment output and
+   site URL. Verify authentication, the real `/api/chatToken` response and then
+   Direct Line Online + an actual AGENT 01 reply. Do not copy tokens to logs.
+
+These are deployment prerequisites, not evidence that Azure deployment or a live
+agent conversation has already succeeded. Public GitHub Pages remains a frontend
+preview and cannot execute the managed API. Browser-local project data is
+origin-specific: export from Pages and restore at the new site when moving hosts.
 
 Diagnostic codes distinguish missing/invalid server configuration, login,
 Origin rejection, Broker HTTP rejection, invalid JSON, missing token, timeout
@@ -220,10 +295,27 @@ No live broker credential is needed for unit tests.
 Unit tests use isolated fixtures, not a live agent or production credentials.
 They cover response parsing, raw archives, project ownership, approval, bounded
 diffs, safe ladder fallback, connection transitions and token-server failures.
-Local responsive checks cover 1440px, 1024px, 819px, 720px, 390px and 360px layouts
-and short mobile heights against the real, unconfigured token handler. Real token issuance, agent responses, expiration/
-reconnection on the service, file handling and GX Works compatibility still
-require an authenticated deployment and the existing broker owner's verification.
+Local responsive checks cover 1672px, 1440px, 1280px, 1024px, 809px, 720px,
+390px and 360px layouts. Engineering form submission, reload persistence,
+source remapping and additive project restore were also exercised in isolated Chrome.
+Automated tests cover candidate-address/label checks, source-bound user completion,
+version restoration, rejection, quota failures, backup validation and rollback.
+
+On November 3, 2026 a temporary loopback-only server used an owner-provided
+credential in process environment only. The existing Broker returned HTTP 403
+without Origin and with the loopback Origin, and HTTP 200 with a short-lived token
+when the verified original Pages Origin was supplied. The proxy now forwards that
+server-configured Broker Origin while still enforcing incoming Origin and hosting
+authentication. No credential was added to source or a settings file.
+
+The actual Web Chat connected through the existing Broker/Direct Line, received
+the agent greeting, sent a support question and received the actual reply. A
+second, explicitly educational minimal-logic request produced a real IL text block,
+which appeared as a preserved PLC-code result and native code-copy cards.
+These observations verify local text conversation and one real response shape,
+not every agent workflow. Azure production deployment, service token-expiry
+recovery, actual image/PDF analysis, GX Works compilation and equipment tests
+remain unverified. The upload capability stays disabled.
 
 The chat-layout check also used the actual Web Chat 4.18 renderer in an isolated
 browser frame with a test-only, offline transport and temporary in-memory

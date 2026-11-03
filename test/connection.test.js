@@ -70,6 +70,16 @@ test("connection only becomes ready on Online and greets once", async () => {
   assert.equal(f.requests[0].options.body, undefined);
   f.P.disconnect();
 });
+test("Azure deployment keeps the token API role-restricted on the supported runtime", () => {
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, "../staticwebapp.config.json"), "utf8"));
+  assert.equal(config.platform.apiRuntime, "node:22");
+  assert.deepEqual(config.routes.find(route => route.route === "/api/*").allowedRoles, ["engineer"]);
+  const workflow = fs.readFileSync(path.join(__dirname, "../.github/workflows/azure-static-web-apps.yml"), "utf8");
+  assert.match(workflow, /workflow_dispatch/);
+  assert.match(workflow, /cp index\.html staticwebapp\.config\.json/);
+  assert.match(workflow, /cp -R css js/);
+  assert.doesNotMatch(workflow, /cp -R api .*panellab-deploy/);
+});
 test("terminal status permits a clean new connection", async () => {
   const f = setup();
   await f.P.connect(); f.lines[0].emit(3);

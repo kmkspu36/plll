@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light">
   <meta name="description" content="기존 Copilot Studio 통합운영 에이전트와 함께하는 PLC 엔지니어링 작업 공간">
   <title>PanelLab — PLC Engineering AI Workspace</title>
-  <link rel="stylesheet" href="css/panellab.css?v=workspace-2">
+  <link rel="stylesheet" href="css/panellab.css?v=workspace-3">
 </head>
 <body>
   <a class="skip" href="#workspace">작업 공간으로 건너뛰기</a>
@@ -50,8 +50,8 @@
       <header class="chat-head">
         <div><div class="eyebrow">AI와 함께하는 스마트한 PLC 엔지니어링</div><h1 id="pageTitle">PanelLab · 대시보드</h1><p id="headerProject" class="header-project"></p></div>
         <div class="header-actions">
-          <button id="headerHelp" class="btn sm" type="button" aria-label="연결 및 저장 안내">안내</button>
-          <span class="local-user">로컬 작업 공간</span>
+          <button id="headerHelp" class="btn sm" type="button" aria-label="연결 및 저장 알림">알림</button>
+          <button id="localAccount" class="btn sm local-user" type="button">로컬 작업 공간 ▾</button>
           <div class="connection-chip offline" role="status"><span class="status-dot"></span><span id="connectionLabel">연결 준비</span></div>
           <button id="toggleResults" class="btn sm" type="button" aria-expanded="false" aria-controls="resultsPanel">결과 열기</button>
         </div>
@@ -61,12 +61,14 @@
           <div><span class="hero-tag">PLC ENGINEERING WORKSPACE</span><h2>더 스마트한 PLC 개발의 시작 <br>PanelLab과 함께하세요.</h2><p>도면 분석부터 코드 생성까지, 기존 통합운영 에이전트 하나로.</p><button id="dashboardChat" class="btn primary" type="button">AI 작업실 열기 <span aria-hidden="true">→</span></button></div>
           <div class="hero-circuit" aria-hidden="true"><div class="circuit-module"><span>INPUT</span><i></i><i></i><i></i></div><div class="circuit-wire"></div><div class="hero-chip">AI<small>AGENT 01</small></div><div class="circuit-wire"></div><div class="circuit-module"><span>OUTPUT</span><i></i><i></i><i></i></div></div>
         </div>
+      <section id="workspaceOverview" class="workspace-overview" aria-label="프로젝트 및 에이전트 현황">
+        <div id="dashboardMetrics" class="dashboard-metrics"></div>
+      </section>
       <div class="engineering-grid">
       <section id="dashboard" class="dashboard" aria-label="프로젝트 대시보드">
         <div class="dashboard-heading"><div><h2>프로젝트 현황</h2><p>이 브라우저의 실제 기록</p></div><button id="dashboardProject" class="btn sm" type="button">관리</button></div>
-        <div id="dashboardMetrics" class="dashboard-metrics"></div>
         <div class="dashboard-grid">
-          <section class="workspace-card"><header><h3>최근 프로젝트</h3><span>로컬 저장</span></header><div id="dashboardProjects" class="dashboard-list"></div></section>
+          <section class="workspace-card"><header><h3>최근 프로젝트</h3><button id="dashboardEngineering" class="text-btn" type="button">전문 데이터 →</button></header><div id="dashboardProjects" class="dashboard-list"></div></section>
           <section class="workspace-card workflow-card"><header><h3>현재 프로젝트 작업 흐름</h3><span>응답 근거 기반</span></header><p class="section-hint">요청 기록과 사용자가 연결한 실제 결과만 표시합니다. AI 완료율은 추정하지 않습니다.</p><ol id="dashboardWorkflow" class="workflow-list"></ol></section>
           <section class="workspace-card"><header><h3>빠른 시작</h3><span>AGENT 01</span></header><div class="dashboard-shortcuts"><button id="dashboardNew" type="button"><span aria-hidden="true">＋</span>새 프로젝트</button><button id="dashboardAttach" type="button"><span aria-hidden="true">↑</span>이미지 준비</button><button data-task="analyze" type="button"><span aria-hidden="true">▤</span>도면 분석 요청</button><button data-task="code" type="button"><span aria-hidden="true">〈〉</span>코드 생성 요청</button></div><p class="section-hint">이미지: PNG·JPEG 로컬 준비 가능. PDF 및 실제 서버 분석은 지원 검증이 필요합니다.</p></section>
           <section class="workspace-card"><header><h3>최근 작업 이력</h3><button id="dashboardHistory" class="text-btn" type="button">전체 보기 →</button></header><div id="dashboardHistoryList" class="dashboard-list"></div></section>
@@ -155,13 +157,16 @@
   <script src="js/analyzer.js"></script>
   <script src="js/diff.js"></script>
   <script src="js/ladder.js"></script>
-  <script src="js/projects.js"></script>
+  <script src="js/projects.js?v=workspace-3"></script>
   <script src="js/conversations.js"></script>
-  <script src="js/storage.js"></script>
+  <script src="js/storage.js?v=workspace-3"></script>
+  <script src="js/engineering.js?v=workspace-3"></script>
+  <script src="js/reports.js?v=workspace-3"></script>
   <script src="js/attachments.js"></script>
   <script src="js/store.js"></script>
-  <script src="js/connection.js"></script>
-  <script src="js/workspace.js?v=workspace-2"></script>
-  <script src="js/panel.js?v=workspace-2"></script>
+  <script src="js/webchat-presentation.js?v=workspace-3"></script>
+  <script src="js/connection.js?v=workspace-3"></script>
+  <script src="js/workspace.js?v=workspace-3"></script>
+  <script src="js/panel.js?v=workspace-3"></script>
 </body>
 </html>

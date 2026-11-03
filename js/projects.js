@@ -106,7 +106,15 @@
         return { time: entry.time, kind: "user", text: (entry.activity.text || "이미지 첨부 요청").slice(0, 200) };
       }));
     }, []) : history.filter(function (h) { return h.projectId === projectId; });
-    return requests.concat(fromResults)
+    var engineering = root.PanelLab.engineering;
+    var local = [];
+    if (engineering) {
+      var snapshot = engineering.snapshot(projectId);
+      snapshot.records.forEach(function (item) { local.push({ time: item.updatedAt || item.createdAt, kind: "local", text: "사용자 엔지니어링 기록: " + item.kind }); });
+      snapshot.versions.forEach(function (item) { local.push({ time: item.createdAt, kind: "local", text: "로컬 코드 버전: " + item.title }); });
+      snapshot.stages.forEach(function (item) { local.push({ time: item.createdAt, kind: "local", text: "사용자 단계 확인: " + taskLabels[item.task] + " · " + engineering.states[item.state] }); });
+    }
+    return requests.concat(fromResults, local)
       .sort(function (a, b) { return a.time < b.time ? -1 : 1; });
   }
   function recordTask(task, context) {
@@ -130,15 +138,39 @@
   function approve(key) {
     var rec = results.find(function (r) { return r.key === key && r.type === "correction"; });
     if (!rec) throw new Error("Correction not found");
-    rec.approval = "approved";
-    rec.approvedAt = new Date().toISOString();
-    var project = projects.find(function (p) { return p.id === rec.projectId; });
-    if (project) {
-      project.workingCopy = { before: rec.data.before, code: rec.data.after, original: rec.original,
-        sourceKey: rec.key, approvedAt: rec.approvedAt };
-      save(PKEY, projects);
+    if (storageBlocked) throw new Error("저장소 복구 전에는 승인할 수 없습니다.");
+    var nextProjects = JSON.parse(JSON.stringify(projects)), nextResults = JSON.parse(JSON.stringify(results));
+    var next = nextResults.find(function (r) { return r.key === key; });
+    var project = nextProjects.find(function (p) { return p.id === rec.projectId; });
+    if (!project) throw new Error("수정 제안의 프로젝트를 찾지 못했습니다.");
+    next.approval = "approved"; next.approvedAt = new Date().toISOString();
+    project.workingCopy = { before: next.data.before, code: next.data.after, original: next.original,
+      sourceKey: next.key, approvedAt: next.approvedAt };
+    var oldProjects = localStorage.getItem(PKEY), oldResults = localStorage.getItem(RKEY), written = false;
+    try {
+      localStorage.setItem(PKEY, JSON.stringify(nextProjects)); written = true;
+      localStorage.setItem(RKEY, JSON.stringify(nextResults));
+    } catch (error) {
+      if (written) {
+        try {
+          if (oldProjects === null) localStorage.removeItem(PKEY); else localStorage.setItem(PKEY, oldProjects);
+          if (oldResults === null) localStorage.removeItem(RKEY); else localStorage.setItem(RKEY, oldResults);
+        } catch (failure) { storageBlocked = true; throw new Error("승인 저장과 복구에 실패했습니다. 백업을 보존하고 저장소를 확인하세요."); }
+      }
+      throw new Error("승인을 저장하지 못했습니다. 작업본을 변경하지 않았습니다.");
     }
-    save(RKEY, results); emit();
+    rec.approval = next.approval; rec.approvedAt = next.approvedAt;
+    projects = nextProjects; results = nextResults; emit();
+  }
+  function reject(key, reason) {
+    var rec = results.find(function (r) { return r.key === key && r.type === "correction"; });
+    if (!rec || rec.approval === "approved") throw new Error("미승인 수정 제안만 거부할 수 있습니다.");
+    if (typeof reason !== "string" || !reason.trim()) throw new Error("거부 이유를 입력하세요.");
+    var next = results.map(function (r) {
+      return r === rec ? Object.assign({}, r, { approval: "rejected", rejectedAt: new Date().toISOString(), rejectionReason: reason.trim() }) : r;
+    });
+    if (!save(RKEY, next)) throw new Error("거부 기록을 저장하지 못했습니다.");
+    results = next; emit();
   }
 
   root.PanelLab = root.PanelLab || {};
@@ -146,7 +178,7 @@
     projects: function () { return projects.slice(); }, active: active, setActive: setActive,
     addProject: addProject, updateProject: updateProject, addResult: addResult,
     resultsFor: resultsFor, addHistory: addHistory, historyFor: historyFor,
-    clearResults: clearResults, onChange: onChange, approve: approve,
+    clearResults: clearResults, onChange: onChange, approve: approve, reject: reject,
     statusLabels: statusLabels, taskLabels: taskLabels, recordTask: recordTask, assignTask: assignTask
   };
 })(window);

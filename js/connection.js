@@ -37,6 +37,7 @@
   }
 
   function stop() {
+    if (P.presentation) P.presentation.stop();
     generation++;
     ready = false;
     P.connected = false;
@@ -77,7 +78,7 @@
         if (current !== generation) return;
         var codes = {
           SERVER_CONFIG_MISSING: "토큰 서버 설정이 누락되었습니다.",
-          SERVER_CONFIG_INVALID: "토큰 서버의 Broker URL 또는 허용 Origin 형식이 올바르지 않습니다.",
+          SERVER_CONFIG_INVALID: "토큰 서버의 Broker URL·허용 Origin·Broker Origin 형식을 확인해 주세요.",
           LOGIN_REQUIRED: "호스팅 로그인이 필요합니다. 로컬 실행은 서버의 개발 모드 설정을 확인해 주세요.",
           ORIGIN_DENIED: "요청 Origin과 서버의 허용 Origin이 다릅니다.",
           BROKER_REJECTED: "기존 Broker가 토큰 요청을 거부했습니다.",
@@ -124,20 +125,21 @@
       root.WebChat.renderWebChat({
         directLine: line, store: store, locale: "ko-KR",
         styleOptions: {
-          backgroundColor: "#111827", bubbleBackground: "#1d293b", bubbleTextColor: "#e5edf8",
-          bubbleFromUserBackground: "#234c83", bubbleFromUserTextColor: "#ffffff",
-          sendBoxBackground: "#172235", sendBoxTextColor: "#e5edf8",
-          sendBoxButtonColor: "#9cb3d3", suggestedActionBackgroundColor: "#1d293b",
-          suggestedActionTextColor: "#e5edf8", hideUploadButton: true,
+          backgroundColor: "#ffffff", bubbleBackground: "#f0f4fa", bubbleTextColor: "#1c3559",
+          bubbleFromUserBackground: "#dbeaff", bubbleFromUserTextColor: "#17457d",
+          sendBoxBackground: "#ffffff", sendBoxTextColor: "#1a365f",
+          sendBoxButtonColor: "#1769ea", suggestedActionBackgroundColor: "#edf4ff",
+          suggestedActionTextColor: "#17457d", hideUploadButton: true,
           fontSizeSmall: "12px", bubbleMaxWidth: 840,
           bubbleBorderRadius: 12, bubbleFromUserBorderRadius: 12,
           bubbleNubSize: 0, bubbleFromUserNubSize: 0,
           paddingRegular: 14,
-          sendBoxHeight: 60, sendBoxBorderTop: "1px solid #2a384d",
-          sendBoxPlaceholderColor: "#98acc8",
+          sendBoxHeight: 60, sendBoxBorderTop: "1px solid #dce4f1",
+          sendBoxPlaceholderColor: "#647492",
           primaryFont: '"Segoe UI", "Malgun Gothic", sans-serif'
         }
       }, document.getElementById("webchat"));
+      if (P.presentation) P.presentation.observe(document.getElementById("webchat"));
       subscription = line.connectionStatus$.subscribe(function (state) {
         if (current !== generation) return;
         var descriptions = [

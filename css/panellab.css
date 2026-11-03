@@ -11,7 +11,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-vis
 .skip{position:fixed;left:8px;top:-60px;z-index:10;background:var(--blue);color:#071325;padding:10px}.skip:focus{top:8px}
 .app{position:relative;top:var(--workspace-top,0px);display:grid;grid-template-columns:230px minmax(0,1fr);grid-template-rows:minmax(0,1fr);height:100vh;height:var(--workspace-height,100dvh);overflow:hidden}
 .app[data-results=open]{grid-template-columns:230px minmax(0,1fr)}
-.nav{background:linear-gradient(170deg,#0b2448,#091c35);color:#e3edff;padding:24px 14px 16px;display:flex;flex-direction:column;gap:16px;border-right:1px solid #203955;overflow:auto;min-height:0;scrollbar-color:#345172 transparent}
+.nav{background:linear-gradient(170deg,#0b2448,#091c35);color:#e3edff;padding:20px 12px 12px;display:flex;flex-direction:column;gap:10px;border-right:1px solid #203955;overflow:hidden;min-height:0;scrollbar-color:#345172 transparent}
 .brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:23px;color:#fff;text-decoration:none;padding:0 6px}
 .brand small{display:block;font-size:8px;letter-spacing:.13em;color:var(--muted);margin-top:5px}
 .logo,.welcome-mark{display:grid;place-items:center;background:#234d83;color:#c9e0ff;border:1px solid #4774ac;border-radius:12px;width:40px;height:40px;font-size:16px;letter-spacing:-.05em}
@@ -23,8 +23,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-vis
 .new-chat{text-align:left;display:flex;align-items:center;gap:14px;padding:11px 14px}
 .new-chat span{font-size:22px;line-height:1}
 .nav-section{font-size:10px;letter-spacing:.12em;color:#8da2bf;display:flex;justify-content:space-between}
-.nav nav{display:grid;gap:5px}
-.nav nav button{display:flex;align-items:center;gap:13px;border:0;background:none;color:#d9e6ff;text-align:left;padding:11px 12px;border-radius:8px}
+.nav nav{display:grid;gap:3px}
+.nav nav button{display:flex;align-items:center;gap:13px;border:0;background:none;color:#d9e6ff;text-align:left;padding:9px 12px;border-radius:8px}
 .nav nav button:hover{background:#183c66;color:#fff}
 .nav nav button[aria-current=page]{background:#1161ec;color:#fff}
 .proj{border:1px solid var(--line);border-radius:10px;padding:11px;display:grid;gap:8px}
@@ -177,7 +177,7 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 .agent-card small{font-size:10px;line-height:1.8;color:#adbfda}
 .agent-dot{width:7px;height:7px;border-radius:50%;background:#c5a666;flex:none}.agent-dot.online{background:#37d493}
 .header-project{font-size:11px;color:var(--muted);margin:7px 0 0;max-width:45vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.local-user{font-size:11px;color:var(--muted);padding:8px 0}.eyebrow{color:#57729c}
+.local-user{font-size:12px;color:var(--text)}.eyebrow{color:#57729c}
 .connection-chip{background:#e9fbf3;border-color:#bbebd4;color:#17764f}.connection-chip.offline{background:#fff7e7;border-color:#ecdcb5;color:#8b6928}
 .connection-symbol{background:#eaf2ff;border-color:#bed4f5}.loading-ring{border-color:#bbd1f6;border-top-color:#1769ea}
 .app[data-connection=error] .connection-symbol{background:#fff5df;border-color:#ecd4a0}
@@ -243,6 +243,9 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 #webchat .webchat__send-box{background:#fff!important}
 #webchat .webchat__send-box-text-box{background:#fff!important}
 #webchat .webchat__send-box-text-box__input{color:#1a365f!important;background:#fff!important}
+#webchat .native-code-card{padding:0;border:1px solid #c9d8ee;border-radius:8px;overflow:auto;background:#10213b;color:#e5edfc}
+#webchat .native-code-card code{display:block;padding:12px;font:13px/1.7 Consolas,monospace}
+#webchat .native-code-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;background:#edf3fd;color:#234369;font:12px/1.5 "Malgun Gothic",sans-serif}
 @media(min-width:721px) and (max-width:1100px){
   .dashboard{padding:18px}.dashboard-hero{padding:24px;min-height:200px}.hero-circuit{display:none}
   .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -264,14 +267,17 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 .workspace-shell .dashboard{padding:0;background:none}
 .workspace-shell .dashboard-heading{margin:0 0 12px}
 .workspace-shell .dashboard-heading h2{font-size:15px}
-.workspace-shell .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:12px}
-.workspace-shell .metric-card{padding:10px 8px;gap:6px}
-.workspace-shell .metric-symbol{display:none}
+.workspace-overview{padding:0 16px 14px;flex-shrink:0}
+.workspace-shell .dashboard-metrics{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(165px,1.4fr) minmax(155px,1.2fr);gap:10px;margin:0}
+.workspace-shell .metric-card{padding:13px 12px;gap:10px;align-items:center}
+.workspace-shell .metric-symbol{display:grid}
 .workspace-shell .metric-card small{line-height:1.5}
-.workspace-shell .metric-title{font-size:10px}.workspace-shell .metric-card strong{font-size:21px;margin:4px 0}
-.workspace-shell .metric-card small{font-size:9px}
+.workspace-shell .metric-title{font-size:12px}.workspace-shell .metric-card strong{font-size:23px;margin:4px 0}
+.workspace-shell .metric-card small{font-size:11px}
+.workspace-shell .metric-card:last-child strong{font-size:18px}
+.app[data-page=chat] .workspace-overview{display:none}
 .workspace-shell .dashboard-shortcuts{padding:10px;gap:7px}
-.workspace-shell .dashboard-shortcuts button{font-size:10px;padding:11px 6px;gap:6px}
+.workspace-shell .dashboard-shortcuts button{font-size:12px;padding:11px 6px;gap:6px}
 .workspace-shell .dashboard-shortcuts span{font-size:16px}
 .workspace-shell .workspace-card>header{padding:12px}.workspace-shell .workspace-card h3{font-size:13px}
 .workspace-shell .project-link{padding:10px 5px;gap:7px;flex-wrap:wrap}
@@ -289,13 +295,29 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 .workspace-shell .quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 .workspace-shell .quick-actions span{display:none}.workspace-shell .quick-actions strong{margin:0;font-size:11px}
 .workspace-shell .quick-actions button{padding:9px}
-.workspace-shell .chat-foot{font-size:9px;padding:8px 12px}
+.workspace-shell .chat-foot{font-size:11px;padding:8px 12px}
 .workspace-shell .attachment-toolbar{padding:7px 12px;flex-wrap:wrap}
 .workspace-shell .attachment-toolbar>span{display:none}
 .workspace-shell .connection-screen{padding:16px}
 .workspace-shell .connection-screen h2{font-size:15px}
 .workspace-shell .connection-screen .connection-caption{display:none}
-.nav .workspace-nav button{white-space:nowrap;font-size:12px;gap:8px}
+.nav .workspace-nav{flex:1;min-height:90px;overflow-y:auto;align-content:start}
+.nav .workspace-nav button{white-space:nowrap;font-size:13px;gap:8px}
+.nav>.brand,.nav>.new-chat,.nav>.nav-section,.nav>.proj,.nav>.nav-bottom{flex-shrink:0}
+.nav .proj{padding:8px;gap:6px;grid-template-columns:1fr auto}
+.nav .proj label{align-self:center}.nav .proj select{grid-column:1 / -1;grid-row:2}
+.nav .proj .pname,.nav .proj #projectMeta{display:none}
+.nav .recent{max-height:48px;overflow:auto;flex-shrink:0}
+.nav-bottom>p{display:none}
+.section-hint,.dashboard-footnote{font-size:12px}
+.workflow-list strong{font-size:12px}.workflow-list small{font-size:11px}
+.engineering-tools{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.engineering-table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0}
+.engineering-table th,.engineering-table td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);overflow-wrap:anywhere;vertical-align:top}
+.table-scroll{overflow:auto;max-height:42vh}
+.engineering-message{padding:10px;border-radius:6px;background:#eef5ff;color:#17457d;white-space:pre-wrap}
+.record-actions{display:flex;gap:5px;flex-wrap:wrap}
+.report-preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:45vh;overflow:auto;font:13px/1.7 "Malgun Gothic",sans-serif}
 .workspace-shell .dashboard .metric-card{min-height:91px}
 @media(min-width:1201px){
   .app[data-page=dashboard] .engineering-grid{grid-template-columns:245px minmax(340px,1fr) minmax(280px,.72fr)}
@@ -310,6 +332,9 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
   .workspace-shell .dashboard-hero{min-height:115px;padding:16px}
   .workspace-shell .welcome .quick-actions{display:none}
   .workspace-shell .header-project{max-width:35vw}
+  .workspace-shell .dashboard-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .workspace-shell .metric-card{padding:9px}.workspace-shell .metric-symbol{display:none}
+  .workspace-shell .metric-card:nth-child(n+4){display:none}
 }
 @media(max-width:720px){
   .engineering-grid,.app[data-page=dashboard] .engineering-grid{display:flex;flex-direction:column;min-height:0;padding:10px}
@@ -322,7 +347,13 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
   .app[data-view=results] .workspace-shell{display:flex}
   .app[data-view=results] .chat-column{display:none}
   .app[data-view=results] .workspace-shell .results:not([hidden]){display:flex;flex:1}
+  .workspace-overview{padding:10px 10px 0}
   .workspace-shell .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .workspace-shell .metric-card:last-child{grid-column:1 / -1}
+  .app[data-page=dashboard] .workspace-shell{overflow-y:auto}
+  .app[data-page=dashboard] .engineering-grid{flex:none}
+  .app[data-page=dashboard] .workspace-shell .dashboard{overflow:visible}
+  .workspace-shell .metric-symbol{display:none}
   .workspace-shell .metric-card{padding:13px}
   .workspace-shell .dashboard-grid{gap:12px}
   .workspace-shell .welcome h2{font-size:16px}
@@ -331,6 +362,7 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
   .workspace-shell .header-project{max-width:52vw}
 }
 @media(max-height:650px){.workspace-shell .dashboard-hero{display:none}.workspace-shell .engineering-grid{padding-top:10px}.workspace-shell .welcome .quick-actions,.workspace-shell .welcome .image-entry,.workspace-shell .welcome p{display:none}.workspace-shell .welcome{padding:10px}}
+@media(max-height:850px){.nav .recent,.nav>.nav-section:not(:first-of-type),.agent-card small{display:none}.agent-card{padding:10px}.agent-card p{margin:5px 0!important}}
 @media(max-width:720px){
   .dashboard{padding:14px 12px 22px}.dashboard-hero{padding:22px;min-height:210px}.dashboard-hero h2{font-size:22px}.hero-circuit{display:none}
   .dashboard-heading{margin-top:21px}.dashboard-heading h2{font-size:16px}.dashboard-heading p{font-size:10px}

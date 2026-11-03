@@ -7,6 +7,7 @@ async function chatToken(request) {
   const broker = process.env.PANEL_BROKER_URL;
   const sealed = process.env.PANEL_BROKER_SEALED;
   const origin = process.env.PANEL_ALLOWED_ORIGIN;
+  const brokerOrigin = process.env.PANEL_BROKER_ORIGIN || origin;
   const missing = [
     !broker && "PANEL_BROKER_URL", !sealed && "PANEL_BROKER_SEALED", !origin && "PANEL_ALLOWED_ORIGIN"
   ].filter(Boolean);
@@ -15,6 +16,10 @@ async function chatToken(request) {
   try {
     url = new URL(broker);
     if (new URL(origin).origin !== origin) return reply(503, "SERVER_CONFIG_INVALID");
+    const upstreamOrigin = new URL(brokerOrigin);
+    if (upstreamOrigin.origin !== brokerOrigin || !["http:", "https:"].includes(upstreamOrigin.protocol)) {
+      return reply(503, "SERVER_CONFIG_INVALID");
+    }
   } catch { return reply(503, "SERVER_CONFIG_INVALID"); }
   if (url.protocol !== "https:" || url.username || url.password) return reply(503, "SERVER_CONFIG_INVALID");
   if (request.headers.get("origin") !== origin) return reply(403, "ORIGIN_DENIED");
@@ -29,7 +34,7 @@ async function chatToken(request) {
   } catch { return reply(401, "LOGIN_REQUIRED"); }
   try {
     const response = await fetch(url, {
-      method: "POST", body: JSON.stringify({ sealed }),
+      method: "POST", headers: { Origin: brokerOrigin }, body: JSON.stringify({ sealed }),
       signal: AbortSignal.timeout(15000), redirect: "error"
     });
     if (!response.ok) return reply(response.status === 429 ? 429 : 502, "BROKER_REJECTED", { upstreamStatus: response.status });
