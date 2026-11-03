@@ -113,6 +113,10 @@
       <p class="small">이미지는 서버로 전송하기 전까지 이 기기에만 있습니다. 민감한 도면의 전송·보관 권한을 확인하세요. 전송 성공은 이미지 분석 성공을 뜻하지 않습니다.</p>
     </form>
   </dialog>
+  <dialog id="resultViewer" class="result-viewer" aria-labelledby="resultViewerTitle">
+    <div class="dlg-h"><h3 id="resultViewerTitle">결과 크게 보기</h3><button id="resultViewerClose" class="btn" type="button">닫기</button></div>
+    <div id="resultViewerBody"></div>
+  </dialog>
   <script src="https://cdn.botframework.com/botframework-webchat/4.18.0/webchat.js"></script>
   <script src="js/analyzer.js"></script>
   <script src="js/diff.js"></script>

@@ -150,13 +150,22 @@ No live broker credential is needed for unit tests.
   preserved locally. Results offer original-response inspection and file export.
   Old results created before raw-activity preservation are explicitly labelled.
   A project export includes conversations, results and the approved working copy.
+- Result cards can collapse and open in a full-window dialog without remounting
+  Web Chat. Supported serial ladder previews can export SVG; unsupported ladder
+  logic still falls back to unchanged source.
+- A user can explicitly retain an incoming archived response as an original-text
+  result, then prepare a ladder/code/review/correction/I/O/explanation follow-up.
+  The current destination is shown before submission. This does not classify an
+  image as analyzed, invent a report schema, restore the old server session, or
+  reattach previous images automatically.
 - Correction proposals preserve both versions. Approval updates only a browser
   working copy, available in project settings; it never writes to a PLC.
 - Only complete serial LD/LDI/AND/ANI rungs with one OUT/SET/RST are visualized.
   OR, branching, unknown instructions, incomplete rungs and extra operands fall
   back to their unchanged source. This is not a Mitsubishi compiler or validator.
-- Upload controls are intentionally disabled until the existing broker/agent
-  upload path and supported file types have been verified end to end.
+- Image preparation and local storage remain available offline; actual upload
+  is disabled until the existing agent path is verified end to end. Native
+  send-box attachment actions are subject to the same capability/limit gate.
 - Browser storage is not encrypted or synchronized. Quota errors are reported
   without silently trimming results. Export important work; malformed storage is
   not automatically overwritten. Clear site data only after backing it up.

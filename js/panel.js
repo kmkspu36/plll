@@ -3,15 +3,15 @@
   "use strict";
   var P = root.PanelLab, D = P.data;
   var TABS = [
-    ["all", "전체"], ["code", "코드"], ["ladder", "작화"], ["error", "오류"], ["fix", "수정"], ["files", "첨부"]
+    ["all", "전체"], ["code", "코드"], ["ladder", "작화"], ["error", "오류"], ["fix", "수정"], ["files", "첨부"], ["raw", "원문"]
   ];
   var TAB_TYPES = {
     all: null, code: ["plc_code"], ladder: ["ladder"], error: ["error_report"], fix: ["correction"],
-    files: ["image", "document", "adaptive_card", "structured_json"]
+    files: ["image", "document", "adaptive_card", "structured_json"], raw: ["raw_response"]
   };
   var TYPE_LABEL = {
     plc_code: "PLC 코드", ladder: "작화", error_report: "오류 검사", correction: "코드 수정",
-    image: "이미지", document: "문서", adaptive_card: "Adaptive Card", structured_json: "JSON"
+    image: "이미지", document: "문서", adaptive_card: "Adaptive Card", structured_json: "JSON", raw_response: "선택한 원문"
   };
   var DISCLAIMER = "기존 에이전트의 응답을 표시한 결과입니다. GX Works 컴파일 및 실제 PLC 검증을 대체하지 않습니다.";
 
@@ -187,8 +187,19 @@
     var actions = el("span", "card-a");
     h.appendChild(actions);
     c.appendChild(h);
-    c.appendChild(note("응답 형식의 자동 분류는 실제 에이전트에서 미검증 상태입니다. AI 원본 응답과 함께 확인하세요."));
-    extra(c, actions);
+    var content = el("div", "card-content");
+    c.appendChild(content);
+    if (rec.type !== "raw_response") content.appendChild(note("응답 형식의 자동 분류는 실제 에이전트에서 미검증 상태입니다. AI 원본 응답과 함께 확인하세요."));
+    extra(content, actions);
+    var collapse = el("button", "btn sm", "접기"); collapse.type = "button"; collapse.setAttribute("aria-expanded", "true");
+    collapse.onclick = function () {
+      content.hidden = !content.hidden; collapse.textContent = content.hidden ? "펼치기" : "접기";
+      collapse.setAttribute("aria-expanded", String(!content.hidden));
+    };
+    actions.appendChild(collapse);
+    var expand = el("button", "btn sm", "전체 화면"); expand.type = "button"; expand.dataset.expand = "true";
+    expand.onclick = function () { showResult(rec); };
+    actions.appendChild(expand);
     var save = el("button", "btn sm", "파일 저장"); save.type = "button";
     save.onclick = function () {
       var text = rec.type === "plc_code" ? rec.data.code : rec.type === "ladder" ? rec.data.source : JSON.stringify(rec, null, 2);
@@ -203,8 +214,35 @@
     } else {
       raw.appendChild(note("이전 버전에서 저장한 결과에는 원본 Activity가 없습니다. 추출 결과만 보존되어 있습니다."));
     }
-    c.appendChild(raw);
+    content.appendChild(raw);
+    if (rec.type === "raw_response") {
+      var follow = el("div", "row result-followup");
+      [["draw", "래더 요청"], ["code", "코드 생성"], ["check", "오류 검토"], ["fix", "수정 요청"], ["io", "I/O 정리"], ["explain", "추가 설명"]].forEach(function (item) {
+        var b = el("button", "btn sm", item[1]); b.type = "button";
+        b.onclick = function () {
+          var current = P.conversations.active();
+          if (!current || current.id !== rec.conversationId || current.projectId !== rec.projectId) {
+            notify("이 원문은 다른 대화의 기록입니다. 새 요청에 포함할 정보를 직접 확인해 주세요.");
+          }
+          document.getElementById("resultViewer").close();
+          requestDialog(item[0], rec.data.text);
+        };
+        follow.appendChild(b);
+      });
+      content.appendChild(follow);
+      content.appendChild(note("후속 요청에는 선택한 응답의 텍스트만 포함됩니다. 이전 이미지가 새 대화로 자동 전달되지는 않습니다."));
+    }
     return c;
+  }
+  function showResult(rec) {
+    var viewer = document.getElementById("resultViewer"), container = document.getElementById("resultViewerBody");
+    container.textContent = "";
+    var rendered = renderRec(rec);
+    if (!rendered) { notify("이 결과 형식을 표시할 수 없습니다. 원본을 확인하세요."); return; }
+    rendered.querySelectorAll("[data-expand]").forEach(function (button) { button.remove(); });
+    document.getElementById("resultViewerTitle").textContent = TYPE_LABEL[rec.type] || "작업 결과";
+    container.appendChild(rendered);
+    viewer.showModal();
   }
   function note(txt) { return el("p", "note", txt); }
   function copyBtn(getText) {
@@ -244,7 +282,18 @@
           var rungs = P.ladder.parseIL(d.source);
           a.appendChild(copyBtn(function () { return d.source; }));
           if (rungs) {
-            c.appendChild(zoomable(renderLadder(rungs), "작화"));
+            var diagram = renderLadder(rungs);
+            c.appendChild(zoomable(diagram, "작화"));
+            var exportSvg = el("button", "btn sm", "SVG 저장"); exportSvg.type = "button";
+            exportSvg.onclick = function () {
+              var clone = diagram.cloneNode(true);
+              clone.setAttribute("xmlns", SVGNS);
+              clone.setAttribute("style", "background:#101b2c;font:12px monospace");
+              clone.querySelectorAll("line,circle").forEach(function (shape) { shape.setAttribute("stroke", "#bcd3f2"); shape.setAttribute("stroke-width", "2"); });
+              clone.querySelectorAll("text").forEach(function (text) { text.setAttribute("fill", "#d7e5fa"); });
+              download(new XMLSerializer().serializeToString(clone), "panellab-ladder.svg", "image/svg+xml");
+            };
+            a.appendChild(exportSvg);
             c.appendChild(note("직렬 접점 LD/LDI/AND/ANI와 단일 OUT/SET/RST만 표시합니다. 주소·명령어 호환성과 실제 작화는 GX Works에서 확인하세요."));
           } else {
             c.appendChild(note("도식으로 변환할 수 없는 형식이라 원문을 표시합니다."));
@@ -276,7 +325,11 @@
           var approve = el("button", "btn sm primary", rec.approval === "approved" ? "승인됨" : "수정안 승인");
           approve.type = "button"; approve.disabled = rec.approval === "approved";
           approve.onclick = function () {
-            if (confirm("수정안을 이 프로젝트의 브라우저 작업본으로 반영할까요? 원본은 보존되며 PLC 장비에는 전송하지 않습니다.")) D.approve(rec.key);
+            if (confirm("수정안을 이 프로젝트의 브라우저 작업본으로 반영할까요? 원본은 보존되며 PLC 장비에는 전송하지 않습니다.")) {
+              D.approve(rec.key);
+              var viewer = document.getElementById("resultViewer");
+              if (viewer.open) viewer.close();
+            }
           };
           a.appendChild(approve);
           c.appendChild(note(rec.approval === "approved" ? "사용자가 승인한 브라우저 작업본입니다. PLC에 적용되지 않았습니다." :
@@ -317,6 +370,12 @@
           var s = JSON.stringify(d.value, null, 2);
           a.appendChild(copyBtn(function () { return s; }));
           c.appendChild(el("pre", "json", s));
+        });
+      case "raw_response":
+        return card(rec, function (c, a) {
+          a.appendChild(copyBtn(function () { return d.text; }));
+          c.appendChild(el("pre", "raw-text", d.text || "(텍스트 없음 · AI 원본 응답의 첨부 정보를 확인하세요.)"));
+          c.appendChild(note("사용자가 선택한 에이전트 원문입니다. 이미지 분석 완료나 오류 판정으로 자동 분류하지 않았습니다."));
         });
     }
     return null;
@@ -529,6 +588,7 @@
   });
   document.getElementById("connectionHelp").onclick = settingsDialog;
   document.getElementById("savedImages").onclick = filesDialog;
+  document.getElementById("resultViewerClose").onclick = function () { document.getElementById("resultViewer").close(); };
   root.addEventListener("panellab:result", function (event) {
     if (event.detail.projectId === D.active().id) {
       setResults(true);
@@ -558,6 +618,17 @@
         var raw = el("details"); raw.appendChild(el("summary", null, "Activity 원본"));
         raw.appendChild(el("pre", "json", JSON.stringify(entry.activity, null, 2)));
         item.appendChild(raw); container.appendChild(item);
+        if (entry.direction === "incoming") {
+          var result = el("button", "btn sm", "이 원문을 결과로 보관"); result.type = "button";
+          result.onclick = function () {
+            D.addResult(entry.activity.id || entry.key, 0, {
+              type: "raw_response", title: "선택한 에이전트 원문", data: { text: entry.activity.text || "" }
+            }, conversation, entry.activity);
+            if (D.active().id === conversation.projectId) { setResults(true); setTab("raw"); setView("results"); }
+            dlg.close();
+          };
+          item.appendChild(result);
+        }
       });
     });
   }
@@ -652,16 +723,22 @@
     draw: ["PLC 작화 요청", "다음 동작 조건에 대한 래더 작화를 요청합니다."],
     check: ["PLC 오류 검사", "다음 PLC 코드를 검토해 주세요. 이중 코일, 중복 주소, 자기유지, 미선언 변수, 접점·코일 사용 오류를 확인하고 위치·원인·수정 방법을 설명해 주세요."],
     fix: ["PLC 코드 수정", "다음 PLC 코드의 수정안을 제안해 주세요. 수정 전 원문과 수정 후 코드, 변경 이유를 구분해 주세요. 사용자 승인 전에는 적용하지 않습니다."],
-    code: ["PLC 코드 생성", "다음 요구사항에 맞는 Mitsubishi PLC 코드와 설명을 요청합니다."]
+    code: ["PLC 코드 생성", "다음 요구사항에 맞는 Mitsubishi PLC 코드와 설명을 요청합니다."],
+    io: ["입출력 정보 정리", "제공된 원문에서 실제로 확인된 입출력 정보만 표로 정리하고, 미확인 주소와 추가 확인 사항을 구분해 주세요."],
+    explain: ["추가 설명 요청", "제공된 원문의 의미와 근거를 추가 설명해 주세요. 확인할 수 없는 내용은 추측하지 말고 질문해 주세요."]
   };
-  function requestDialog(task) {
+  function requestDialog(task, sourceText) {
     var definition = TASKS[task];
+    var context = P.conversations.active(), projectId = D.active().id;
     openDialog(definition[0], function (container) {
       container.appendChild(note("기존 통합운영 에이전트에 전송할 요청입니다. 새 AI나 로컬 검사기를 사용하지 않습니다."));
+      container.appendChild(note("전송 대상: 현재 프로젝트 ‘" + D.active().name + "’의 대화입니다." +
+        (sourceText ? " 이전 응답의 텍스트만 새 요청에 포함됩니다. 이전 이미지는 자동 재첨부되지 않습니다." : "")));
       var form = el("form", "form");
       var label = el("label", "fld"); label.appendChild(el("span", null, task === "check" || task === "fix" ? "검토할 코드와 요구사항" : "동작 조건과 요구사항"));
       var text = el("textarea"); text.required = true; text.maxLength = 50000;
       text.placeholder = "CPU 모델, 입출력 조건, 인터록 조건 등 확인된 정보만 입력하세요.";
+      if (sourceText) text.value = "아래는 이전 에이전트의 원문입니다. 내용과 불확실한 항목을 재확인하여 후속 작업을 요청합니다.\n\n" + sourceText;
       label.appendChild(text); form.appendChild(label);
       var submit = el("button", "btn primary", "기존 에이전트에 전송"); submit.type = "submit";
       submit.disabled = !P.connected;
@@ -673,6 +750,9 @@
       form.onsubmit = function (event) {
         event.preventDefault();
         if (!text.value.trim()) { text.setCustomValidity("요구사항이나 코드를 입력해 주세요."); text.reportValidity(); return; }
+        if (P.conversations.active() !== context || D.active().id !== projectId) {
+          text.setCustomValidity("대화 또는 프로젝트가 변경되었습니다. 요청 창을 다시 열어 주세요."); text.reportValidity(); return;
+        }
         var project = D.active();
         var request = [
           definition[1], "프로젝트: " + project.name,
