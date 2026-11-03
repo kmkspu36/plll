@@ -12,6 +12,13 @@
     return isNaN(parsed) ? "기록 없음" : parsed.toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   }
   function init(actions) {
+    var workflow = document.querySelector(".workflow-card");
+    var mobile = root.matchMedia("(max-width:720px)");
+    function placeWorkflow() {
+      (mobile.matches ? document.querySelector(".dashboard-grid") : document.getElementById("resultsPanel")).appendChild(workflow);
+    }
+    mobile.addEventListener("change", placeWorkflow);
+    placeWorkflow();
     function render() {
       var project = D.active(), projects = D.projects(), results = D.resultsFor(project.id);
       var metrics = document.getElementById("dashboardMetrics");

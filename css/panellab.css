@@ -10,7 +10,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 .skip{position:fixed;left:8px;top:-60px;z-index:10;background:var(--blue);color:#071325;padding:10px}.skip:focus{top:8px}
 .app{position:relative;top:var(--workspace-top,0px);display:grid;grid-template-columns:230px minmax(0,1fr);grid-template-rows:minmax(0,1fr);height:100vh;height:var(--workspace-height,100dvh);overflow:hidden}
-.app[data-results=open]{grid-template-columns:230px minmax(420px,1fr) minmax(320px,32%)}
+.app[data-results=open]{grid-template-columns:230px minmax(0,1fr)}
 .nav{background:linear-gradient(170deg,#0b2448,#091c35);color:#e3edff;padding:24px 14px 16px;display:flex;flex-direction:column;gap:16px;border-right:1px solid #203955;overflow:auto;min-height:0;scrollbar-color:#345172 transparent}
 .brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:23px;color:#fff;text-decoration:none;padding:0 6px}
 .brand small{display:block;font-size:8px;letter-spacing:.13em;color:var(--muted);margin-top:5px}
@@ -138,7 +138,6 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 .mobile-tabs{display:none}
 @media(min-width:721px) and (max-width:1100px){
   .app,.app[data-results=open]{grid-template-columns:185px minmax(0,1fr)}
-  .results{position:fixed;right:0;top:68px;bottom:0;width:min(440px,65vw);z-index:3;box-shadow:-12px 0 30px #0006}
   .nav{padding:22px 12px}.chat-head{padding:12px 16px}
   .brand{font-size:18px}.brand small{font-size:6px}
   .welcome{padding:16px}.quick-actions{grid-template-columns:1fr 1fr}
@@ -195,8 +194,6 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 .code-search input{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:7px;background:#f7faff;color:var(--text)}
 .text-btn{border:0;background:none;padding:5px;color:#1766d7;font-size:11px;white-space:nowrap}
 .dashboard{flex:1;min-height:0;overflow:auto;padding:22px 26px 30px;background:linear-gradient(145deg,#f3f6fc,#f7f9ff)}
-.app[data-page=dashboard] .chat>#status,.app[data-page=dashboard] .chat>#welcome,.app[data-page=dashboard] .chat>.chat-stage,.app[data-page=dashboard] .chat>#offlineComposer,.app[data-page=dashboard] .chat>.attachment-toolbar,.app[data-page=dashboard] .chat>.chat-foot{display:none!important}
-.app[data-page=dashboard] #toggleResults{display:none}
 .dashboard-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px;overflow:hidden;min-height:220px;padding:30px 34px;border-radius:13px;background:linear-gradient(105deg,#132b4d 0%,#0a2850 55%,#063b7f 100%);color:#fff}
 .dashboard-hero h2{font-size:clamp(21px,2.1vw,30px);line-height:1.5;margin:10px 0;letter-spacing:-.03em}
 .dashboard-hero p{font-size:12px;color:#c7d8f1;line-height:1.8;margin:0 0 18px}.hero-tag{font-size:9px;letter-spacing:.18em;color:#93bcff}
@@ -212,7 +209,7 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 .metric-symbol{display:grid;place-items:center;flex:none;width:37px;height:37px;border-radius:10px;background:#ecf3ff;color:#176aff;font-size:21px}
 .metric-card:nth-child(3) .metric-symbol{background:#e9f9f2;color:#14a46c}.metric-card>div{min-width:0}.metric-title{font-size:12px;display:block;font-weight:600}
 .metric-card strong{display:block;font-size:26px;margin:6px 0;letter-spacing:-.03em}.metric-card small{font-size:9px;display:block;color:var(--muted);line-height:1.6}
-.dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .workspace-card{background:#fff;border:1px solid var(--line);border-radius:11px;min-width:0;overflow:hidden}
 .workspace-card>header{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #e6ecf5;padding:16px 18px;background:linear-gradient(90deg,#fff,#f8faff)}
 .workspace-card h3{margin:0;font-size:15px}.workspace-card>header>span{font-size:10px;color:var(--muted)}
@@ -231,7 +228,7 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 .workflow-list li.requested .workflow-number{background:#e4f0ff;color:#176bea;border-color:#a1c8ff}
 .workflow-list li.has-result .workflow-number{background:#fff3dc;color:#936718;border-color:#ead3a5}
 .workflow-list li>div{flex:1;min-width:0}.workflow-list strong{font-size:11px;display:block}.workflow-list small{font-size:10px;display:block;color:var(--muted);margin-top:5px;line-height:1.5}
-.workflow-card{grid-column:2;grid-row:1 / span 2}
+.workflow-card{flex-shrink:0}
 .dashboard-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px 18px 3px}
 .dashboard-shortcuts button{display:flex;align-items:center;gap:10px;background:#f9fbff;color:#26436e;border:1px solid #dfe7f5;border-radius:8px;padding:15px 12px;font-size:11px}
 .dashboard-shortcuts button:hover{border-color:#99bfff}.dashboard-shortcuts span{color:#1768ed;font-size:21px}
@@ -249,8 +246,91 @@ dialog::backdrop{background:rgba(3,8,17,.75)}
 @media(min-width:721px) and (max-width:1100px){
   .dashboard{padding:18px}.dashboard-hero{padding:24px;min-height:200px}.hero-circuit{display:none}
   .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .chat-head{min-height:88px}.local-user{display:none}.results{top:88px}
+  .chat-head{min-height:88px}.local-user{display:none}
 }
+.engineering-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;flex:1;min-height:0;padding:0 16px 16px}
+.workspace-shell .dashboard-hero{flex-shrink:0;min-height:130px;margin:16px;padding:18px 26px}
+.workspace-shell .dashboard-hero h2{font-size:21px;line-height:1.35;margin:5px 0}
+.workspace-shell .dashboard-hero h2 br{display:none}
+.workspace-shell .dashboard-hero p{margin:0 0 8px;font-size:11px}
+.workspace-shell .hero-chip{width:80px;height:80px;font-size:30px}
+.workspace-shell .circuit-module{padding:10px}
+.workspace-shell .dashboard-hero .btn{font-size:11px;padding:7px 12px}
+.app[data-page=chat] .dashboard-hero{display:none}
+.app[data-page=chat] .engineering-grid{padding-top:16px}
+.chat-column{display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.workspace-card-title{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line);flex-shrink:0}
+.workspace-card-title h2{font-size:14px;margin:0;color:#155fdb}.workspace-card-title>span{font-size:10px;color:var(--muted)}
+.workspace-shell .dashboard{padding:0;background:none}
+.workspace-shell .dashboard-heading{margin:0 0 12px}
+.workspace-shell .dashboard-heading h2{font-size:15px}
+.workspace-shell .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:12px}
+.workspace-shell .metric-card{padding:10px 8px;gap:6px}
+.workspace-shell .metric-symbol{display:none}
+.workspace-shell .metric-card small{line-height:1.5}
+.workspace-shell .metric-title{font-size:10px}.workspace-shell .metric-card strong{font-size:21px;margin:4px 0}
+.workspace-shell .metric-card small{font-size:9px}
+.workspace-shell .dashboard-shortcuts{padding:10px;gap:7px}
+.workspace-shell .dashboard-shortcuts button{font-size:10px;padding:11px 6px;gap:6px}
+.workspace-shell .dashboard-shortcuts span{font-size:16px}
+.workspace-shell .workspace-card>header{padding:12px}.workspace-shell .workspace-card h3{font-size:13px}
+.workspace-shell .project-link{padding:10px 5px;gap:7px;flex-wrap:wrap}
+.workspace-shell .project-status{margin-left:auto}
+.workspace-shell .section-hint{margin:10px 12px}
+.workspace-shell .results{position:static;width:auto;box-shadow:none;border:1px solid var(--line);border-radius:10px;min-height:0}
+.workspace-shell .result-head{padding:14px 12px}
+.workspace-shell .results .rbody{min-height:120px;flex:1}
+.workspace-shell .results .workflow-card{border:0;border-top:1px solid var(--line);border-radius:0;max-height:42%;overflow:auto}
+.workspace-shell .workflow-list{padding:0 12px 10px}
+.workspace-shell .workflow-list li{padding:8px 0}
+.workspace-shell .welcome{padding:15px}.workspace-shell .welcome-mark{display:none}
+.workspace-shell .welcome h2{font-size:17px}
+.workspace-shell .welcome p{font-size:11px}
+.workspace-shell .quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+.workspace-shell .quick-actions span{display:none}.workspace-shell .quick-actions strong{margin:0;font-size:11px}
+.workspace-shell .quick-actions button{padding:9px}
+.workspace-shell .chat-foot{font-size:9px;padding:8px 12px}
+.workspace-shell .attachment-toolbar{padding:7px 12px;flex-wrap:wrap}
+.workspace-shell .attachment-toolbar>span{display:none}
+.workspace-shell .connection-screen{padding:16px}
+.workspace-shell .connection-screen h2{font-size:15px}
+.workspace-shell .connection-screen .connection-caption{display:none}
+.nav .workspace-nav button{white-space:nowrap;font-size:12px;gap:8px}
+.workspace-shell .dashboard .metric-card{min-height:91px}
+@media(min-width:1201px){
+  .app[data-page=dashboard] .engineering-grid{grid-template-columns:245px minmax(340px,1fr) minmax(280px,.72fr)}
+  .app[data-page=dashboard][data-results=closed] .engineering-grid{grid-template-columns:245px minmax(0,1fr)}
+  .app[data-page=chat][data-results=open] .engineering-grid{grid-template-columns:minmax(0,1fr) minmax(300px,.55fr)}
+}
+@media(min-width:721px) and (max-width:1200px){
+  .app,.app[data-results=open]{grid-template-columns:180px minmax(0,1fr)}
+  .app[data-page=dashboard] .engineering-grid{grid-template-columns:210px minmax(0,1fr)}
+  .app[data-page=dashboard] .workspace-shell .results{display:none}
+  .app[data-page=chat][data-results=open] .engineering-grid{grid-template-columns:minmax(0,1fr) minmax(250px,.8fr)}
+  .workspace-shell .dashboard-hero{min-height:115px;padding:16px}
+  .workspace-shell .welcome .quick-actions{display:none}
+  .workspace-shell .header-project{max-width:35vw}
+}
+@media(max-width:720px){
+  .engineering-grid,.app[data-page=dashboard] .engineering-grid{display:flex;flex-direction:column;min-height:0;padding:10px}
+  .workspace-shell .dashboard-hero{display:none}
+  .app[data-page=dashboard] .chat-column,.app[data-page=dashboard] .workspace-shell .results{display:none}
+  .app[data-page=dashboard] .workspace-shell .dashboard{display:block;flex:1;overflow:auto}
+  .workspace-shell .dashboard .workflow-card{max-height:none;overflow:visible}
+  .app[data-page=chat] .chat-column{flex:1}
+  .app[data-page=chat] .workspace-shell .results{display:none}
+  .app[data-view=results] .workspace-shell{display:flex}
+  .app[data-view=results] .chat-column{display:none}
+  .app[data-view=results] .workspace-shell .results:not([hidden]){display:flex;flex:1}
+  .workspace-shell .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .workspace-shell .metric-card{padding:13px}
+  .workspace-shell .dashboard-grid{gap:12px}
+  .workspace-shell .welcome h2{font-size:16px}
+  .workspace-shell .welcome p,.workspace-shell .welcome .eyebrow{display:none}
+  .workspace-shell .results .workflow-card{max-height:35%}
+  .workspace-shell .header-project{max-width:52vw}
+}
+@media(max-height:650px){.workspace-shell .dashboard-hero{display:none}.workspace-shell .engineering-grid{padding-top:10px}.workspace-shell .welcome .quick-actions,.workspace-shell .welcome .image-entry,.workspace-shell .welcome p{display:none}.workspace-shell .welcome{padding:10px}}
 @media(max-width:720px){
   .dashboard{padding:14px 12px 22px}.dashboard-hero{padding:22px;min-height:210px}.dashboard-hero h2{font-size:22px}.hero-circuit{display:none}
   .dashboard-heading{margin-top:21px}.dashboard-heading h2{font-size:16px}.dashboard-heading p{font-size:10px}

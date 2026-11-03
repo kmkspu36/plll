@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light">
   <meta name="description" content="기존 Copilot Studio 통합운영 에이전트와 함께하는 PLC 엔지니어링 작업 공간">
   <title>PanelLab — PLC Engineering AI Workspace</title>
-  <link rel="stylesheet" href="css/panellab.css">
+  <link rel="stylesheet" href="css/panellab.css?v=workspace-2">
 </head>
 <body>
   <a class="skip" href="#workspace">작업 공간으로 건너뛰기</a>
@@ -46,7 +46,7 @@
       </div>
     </aside>
 
-    <main id="workspace" class="chat" tabindex="-1">
+    <main id="workspace" class="chat workspace-shell" tabindex="-1">
       <header class="chat-head">
         <div><div class="eyebrow">AI와 함께하는 스마트한 PLC 엔지니어링</div><h1 id="pageTitle">PanelLab · 대시보드</h1><p id="headerProject" class="header-project"></p></div>
         <div class="header-actions">
@@ -57,12 +57,13 @@
         </div>
       </header>
       <div id="notice" class="notice" role="alert" hidden><span id="noticeText"></span><button id="dismissNotice" type="button" class="btn sm" aria-label="알림 닫기">닫기</button></div>
-      <section id="dashboard" class="dashboard" aria-label="프로젝트 대시보드">
         <div class="dashboard-hero">
-          <div><span class="hero-tag">PLC ENGINEERING WORKSPACE</span><h2>더 스마트한 PLC 개발의 시작<br>PanelLab과 함께하세요.</h2><p>도면 분석부터 코드 생성까지, 기존 통합운영 에이전트 하나로.</p><button id="dashboardChat" class="btn primary" type="button">AI 작업실 열기 <span aria-hidden="true">→</span></button></div>
+          <div><span class="hero-tag">PLC ENGINEERING WORKSPACE</span><h2>더 스마트한 PLC 개발의 시작 <br>PanelLab과 함께하세요.</h2><p>도면 분석부터 코드 생성까지, 기존 통합운영 에이전트 하나로.</p><button id="dashboardChat" class="btn primary" type="button">AI 작업실 열기 <span aria-hidden="true">→</span></button></div>
           <div class="hero-circuit" aria-hidden="true"><div class="circuit-module"><span>INPUT</span><i></i><i></i><i></i></div><div class="circuit-wire"></div><div class="hero-chip">AI<small>AGENT 01</small></div><div class="circuit-wire"></div><div class="circuit-module"><span>OUTPUT</span><i></i><i></i><i></i></div></div>
         </div>
-        <div class="dashboard-heading"><div><h2>엔지니어링 대시보드</h2><p>이 브라우저에 저장된 실제 프로젝트와 작업 기록입니다.</p></div><button id="dashboardProject" class="btn" type="button">프로젝트 관리</button></div>
+      <div class="engineering-grid">
+      <section id="dashboard" class="dashboard" aria-label="프로젝트 대시보드">
+        <div class="dashboard-heading"><div><h2>프로젝트 현황</h2><p>이 브라우저의 실제 기록</p></div><button id="dashboardProject" class="btn sm" type="button">관리</button></div>
         <div id="dashboardMetrics" class="dashboard-metrics"></div>
         <div class="dashboard-grid">
           <section class="workspace-card"><header><h3>최근 프로젝트</h3><span>로컬 저장</span></header><div id="dashboardProjects" class="dashboard-list"></div></section>
@@ -72,6 +73,8 @@
         </div>
         <p class="dashboard-footnote">CPU 모델 미정 · AI 분석은 GX Works 컴파일·실장비 검증을 대체하지 않습니다. 클라우드 동기화와 계정 로그인은 별도 구성 사항입니다.</p>
       </section>
+      <section class="chat-column" aria-label="AI 엔지니어링 작업실">
+      <div class="workspace-card-title"><h2>AI 엔지니어링 작업실</h2><span>AGENT 01</span></div>
       <div id="status" class="status" role="status" aria-live="polite">
         <span id="statusText">채팅에 연결하는 중입니다...</span>
         <button id="retryConnect" class="btn sm" type="button" hidden>새 대화로 재연결</button>
@@ -104,7 +107,7 @@
       </div>
       <div class="attachment-toolbar"><button id="openAttachments" class="btn sm" type="button" aria-haspopup="dialog">이미지 첨부</button><button class="btn sm" type="button" disabled title="PDF·코드 파일은 기존 에이전트 지원 확인이 필요합니다.">파일 · 미확인</button><span>이미지 단독 또는 설명과 함께 요청 준비</span></div>
       <footer class="chat-foot"><span id="sendStatus" role="status" aria-live="polite">연결 대기 · 메시지를 전송하지 않았습니다.</span><span id="uploadStatus">이미지: 로컬 준비 가능 · 서버 분석 미검증</span></footer>
-    </main>
+      </section>
 
     <section id="resultsPanel" class="results" aria-label="PLC 작업 결과" hidden>
       <div class="result-head">
@@ -117,6 +120,8 @@
       <div id="resultBody" class="rbody"></div>
       <p class="result-disclaimer">에이전트 응답 기반 표시 · PLC 컴파일 및 실장비 검증을 대체하지 않습니다.</p>
     </section>
+      </div>
+    </main>
     <nav class="mobile-tabs" aria-label="화면 전환">
       <button id="mobileDashboard" class="mtab" type="button">홈</button>
       <button class="mtab" data-view="chat" type="button">채팅</button>
@@ -156,7 +161,7 @@
   <script src="js/attachments.js"></script>
   <script src="js/store.js"></script>
   <script src="js/connection.js"></script>
-  <script src="js/workspace.js"></script>
-  <script src="js/panel.js"></script>
+  <script src="js/workspace.js?v=workspace-2"></script>
+  <script src="js/panel.js?v=workspace-2"></script>
 </body>
 </html>

@@ -508,7 +508,7 @@
     document.querySelectorAll(".mtab").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.view === v)); });
   }
   function dashboard() {
-    setResults(false); setView("chat");
+    setView("chat"); setResults(true);
     app.dataset.page = "dashboard";
     document.getElementById("dashboard").hidden = false;
     document.getElementById("pageTitle").textContent = "PanelLab | PLC Engineering AI";

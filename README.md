@@ -240,6 +240,15 @@ results switching, attachment-dialog bounds and the offline send gate were check
 Project creation, description/user status, real metric updates and reload
 persistence were verified in a temporary browser profile, not the user's storage.
 
+The reference-layout refinement places compact project cards, the existing
+native Web Chat and an independent results/evidence column together on wide
+desktop screens. The banner is compact rather than pushing all cards below the
+fold. Tablet prioritizes summary/chat and opens results on request; mobile keeps
+separate Home/Chat/Results views and moves the same workflow card onto Home.
+No duplicate Web Chat or transcript is created during layout changes. The CSS
+and changed presentation scripts use a release query suffix to avoid mixing old
+cached styles with new HTML; retain and bump it for subsequent presentation releases.
+
 The publicly reachable existing Broker returned HTTP 405 for GET, HTTP 204 for
 OPTIONS, and HTTP 400 with an error object for an empty POST during diagnosis.
 The browser could read that empty-request error response via CORS. These results
